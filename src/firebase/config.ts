@@ -2,8 +2,8 @@
 'use client';
 
 /**
- * Konfigurasi Firebase App dengan Realtime Database URL.
- * Pastikan databaseURL sesuai dengan yang ada di Firebase Console Anda.
+ * Konfigurasi Firebase App dengan kredensial asli.
+ * Menggunakan Realtime Database untuk mendukung paket gratis Spark.
  */
 export const firebaseConfig = {
   apiKey: "AIzaSyCDyaki9Pwn8WTA4ro4FMz--RuVasXGwnk",
