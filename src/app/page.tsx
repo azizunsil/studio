@@ -1,4 +1,3 @@
-
 "use client"
 
 import React, { useState, useMemo } from 'react';
@@ -61,15 +60,15 @@ export default function Home() {
   return (
     <div className="flex flex-col h-screen overflow-hidden bg-background">
       {/* Header & Search */}
-      <header className="px-4 pt-6 pb-3 bg-white/80 backdrop-blur-md sticky top-0 z-10 border-b space-y-4">
-        <div className="flex items-center justify-between gap-2">
+      <header className="px-4 pt-4 pb-3 bg-white/80 backdrop-blur-md sticky top-0 z-10 border-b space-y-3">
+        <div className="flex items-center justify-between gap-2 overflow-hidden">
           <Sheet>
             <SheetTrigger asChild>
-              <button className="flex items-center gap-2 hover:opacity-80 transition-opacity overflow-hidden">
+              <button className="flex items-center gap-2 hover:opacity-80 transition-opacity min-w-0">
                 <div className="bg-primary p-2 rounded-xl shrink-0">
                   <Store className="h-5 w-5 text-white" />
                 </div>
-                <h1 className="text-xl font-bold tracking-tight text-primary truncate">Barang dan Roris</h1>
+                <h1 className="text-lg font-bold tracking-tight text-primary truncate">Barang & Roris</h1>
               </button>
             </SheetTrigger>
             <LaporanDrawer products={products} />
@@ -89,14 +88,14 @@ export default function Home() {
           />
         </div>
 
-        <div className="overflow-x-auto no-scrollbar -mx-4 px-4">
+        <div className="overflow-x-auto -mx-4 px-4 pb-1 no-scrollbar">
           <Tabs value={selectedCategory} onValueChange={setSelectedCategory} className="w-full">
             <TabsList className="h-9 bg-transparent p-0 justify-start flex-nowrap w-max gap-1">
               {categories.map(cat => (
                 <TabsTrigger 
                   key={cat} 
                   value={cat}
-                  className="rounded-full data-[state=active]:bg-primary data-[state=active]:text-white text-xs px-4 h-7 whitespace-nowrap border border-slate-100"
+                  className="rounded-full data-[state=active]:bg-primary data-[state=active]:text-white text-xs px-4 h-7 whitespace-nowrap border border-slate-100 shadow-sm"
                 >
                   {cat}
                 </TabsTrigger>
@@ -107,7 +106,7 @@ export default function Home() {
       </header>
 
       {/* Main Content */}
-      <div className="flex-1 overflow-y-auto px-4 py-4 pb-24">
+      <div className="flex-1 overflow-y-auto px-4 py-4 pb-28">
         {loading ? (
           <div className="flex justify-center py-20">
             <Package className="h-8 w-8 animate-pulse text-muted-foreground opacity-20" />

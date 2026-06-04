@@ -60,9 +60,13 @@
   }
 }
 
-/* Hide scrollbars for clean mobile look */
-::-webkit-scrollbar {
+/* Memastikan area scroll tetap bersih tapi fungsional */
+.no-scrollbar::-webkit-scrollbar {
   display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }
 
 .fab-shadow {

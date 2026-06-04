@@ -1,16 +1,15 @@
-
 "use client"
 
 import React, { useRef } from 'react';
 import { Button } from '@/components/ui/button';
-import { Download, Upload, MoreHorizontal } from 'lucide-react';
+import { Download, Upload } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Product } from '@/lib/types';
 import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { collection, addDoc, query } from 'firebase/firestore';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 export function CsvActions() {
   const { toast } = useToast();
@@ -87,7 +86,7 @@ export function CsvActions() {
           }
         }
 
-        toast({ title: "Proses Berhasil", description: `${importedCount} produk sedang diimpor ke Cloud.` });
+        toast({ title: "Proses Berhasil", description: `${importedCount} produk sedang diimpor.` });
       } catch (error) {
         toast({ title: "Gagal", description: "Format file CSV tidak valid." });
       }
@@ -97,22 +96,37 @@ export function CsvActions() {
   };
 
   return (
-    <div className="flex gap-2">
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button variant="ghost" size="icon" className="h-10 w-10 text-primary bg-slate-100 rounded-xl hover:bg-slate-200 shadow-sm border border-slate-200">
-            <MoreHorizontal className="h-6 w-6" />
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-48">
-          <DropdownMenuItem onClick={handleExport} className="py-3">
-            <Download className="mr-2 h-4 w-4" /> Ekspor CSV
-          </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => fileInputRef.current?.click()} className="py-3">
-            <Upload className="mr-2 h-4 w-4" /> Impor CSV
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
+    <div className="flex items-center gap-1.5">
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button 
+              variant="outline" 
+              size="icon" 
+              onClick={handleExport}
+              className="h-9 w-9 bg-white border-slate-200 shadow-sm rounded-lg hover:bg-slate-50 text-primary"
+            >
+              <Download className="h-4 w-4" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent><p>Ekspor CSV</p></TooltipContent>
+        </Tooltip>
+
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button 
+              variant="outline" 
+              size="icon" 
+              onClick={() => fileInputRef.current?.click()}
+              className="h-9 w-9 bg-white border-slate-200 shadow-sm rounded-lg hover:bg-slate-50 text-primary"
+            >
+              <Upload className="h-4 w-4" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent><p>Impor CSV</p></TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+
       <input
         type="file"
         ref={fileInputRef}
