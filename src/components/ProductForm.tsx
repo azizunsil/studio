@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState } from 'react';
+import React from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -10,7 +10,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Loader2 } from 'lucide-react';
 import { useFirestore } from '@/firebase';
 import { collection, doc, addDoc, updateDoc } from 'firebase/firestore';
 import { errorEmitter } from '@/firebase/error-emitter';
@@ -30,7 +29,6 @@ interface ProductFormProps {
 }
 
 export function ProductForm({ product, onSuccess }: ProductFormProps) {
-  const [loading, setLoading] = useState(false);
   const firestore = useFirestore();
 
   const { register, handleSubmit, watch, setValue, formState: { errors } } = useForm<z.infer<typeof schema>>({
@@ -55,7 +53,6 @@ export function ProductForm({ product, onSuccess }: ProductFormProps) {
 
   const onSubmit = (data: z.infer<typeof schema>) => {
     if (!firestore) return;
-    setLoading(true);
 
     if (product) {
       const docRef = doc(firestore, 'products', product.id);
@@ -66,10 +63,6 @@ export function ProductForm({ product, onSuccess }: ProductFormProps) {
             operation: 'update',
             requestResourceData: data,
           }));
-        })
-        .finally(() => {
-          setLoading(false);
-          onSuccess();
         });
     } else {
       const colRef = collection(firestore, 'products');
@@ -80,12 +73,11 @@ export function ProductForm({ product, onSuccess }: ProductFormProps) {
             operation: 'create',
             requestResourceData: data,
           }));
-        })
-        .finally(() => {
-          setLoading(false);
-          onSuccess();
         });
     }
+    
+    // Langsung tutup dialog agar UI terasa sangat responsif (Optimistic UI)
+    onSuccess();
   };
 
   return (
@@ -139,8 +131,7 @@ export function ProductForm({ product, onSuccess }: ProductFormProps) {
         </div>
 
         <DialogFooter className="pt-4">
-          <Button type="submit" className="w-full" disabled={loading}>
-            {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+          <Button type="submit" className="w-full">
             {product ? 'Simpan Perubahan' : 'Simpan Produk'}
           </Button>
         </DialogFooter>
