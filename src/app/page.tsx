@@ -2,8 +2,8 @@
 "use client"
 
 import React, { useState, useMemo } from 'react';
-import { Search, Plus, Edit2, Trash2, Package, MoreVertical, Store, Filter } from 'lucide-react';
-import { Product, Category } from '@/lib/types';
+import { Search, Plus, Edit2, Trash2, Package, MoreVertical, Store } from 'lucide-react';
+import { Product } from '@/lib/types';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -61,20 +61,22 @@ export default function Home() {
   return (
     <div className="flex flex-col h-screen overflow-hidden bg-background">
       {/* Header & Search */}
-      <header className="px-4 pt-6 pb-2 bg-white/80 backdrop-blur-md sticky top-0 z-10 border-b space-y-3">
-        <div className="flex items-center justify-between">
+      <header className="px-4 pt-6 pb-3 bg-white/80 backdrop-blur-md sticky top-0 z-10 border-b space-y-4">
+        <div className="flex items-center justify-between gap-2">
           <Sheet>
             <SheetTrigger asChild>
-              <button className="flex items-center gap-2 hover:opacity-80 transition-opacity">
-                <div className="bg-primary p-2 rounded-xl">
+              <button className="flex items-center gap-2 hover:opacity-80 transition-opacity overflow-hidden">
+                <div className="bg-primary p-2 rounded-xl shrink-0">
                   <Store className="h-5 w-5 text-white" />
                 </div>
-                <h1 className="text-xl font-bold tracking-tight text-primary">Barang dan Roris</h1>
+                <h1 className="text-xl font-bold tracking-tight text-primary truncate">Barang dan Roris</h1>
               </button>
             </SheetTrigger>
             <LaporanDrawer products={products} />
           </Sheet>
-          <CsvActions />
+          <div className="shrink-0">
+            <CsvActions />
+          </div>
         </div>
         
         <div className="relative">
@@ -87,19 +89,21 @@ export default function Home() {
           />
         </div>
 
-        <Tabs value={selectedCategory} onValueChange={setSelectedCategory} className="w-full">
-          <TabsList className="w-full h-9 bg-transparent p-0 justify-start overflow-x-auto overflow-y-hidden no-scrollbar">
-            {categories.map(cat => (
-              <TabsTrigger 
-                key={cat} 
-                value={cat}
-                className="rounded-full data-[state=active]:bg-primary data-[state=active]:text-white text-xs px-4 h-7 whitespace-nowrap"
-              >
-                {cat}
-              </TabsTrigger>
-            ))}
-          </TabsList>
-        </Tabs>
+        <div className="overflow-x-auto no-scrollbar -mx-4 px-4">
+          <Tabs value={selectedCategory} onValueChange={setSelectedCategory} className="w-full">
+            <TabsList className="h-9 bg-transparent p-0 justify-start flex-nowrap w-max gap-1">
+              {categories.map(cat => (
+                <TabsTrigger 
+                  key={cat} 
+                  value={cat}
+                  className="rounded-full data-[state=active]:bg-primary data-[state=active]:text-white text-xs px-4 h-7 whitespace-nowrap border border-slate-100"
+                >
+                  {cat}
+                </TabsTrigger>
+              ))}
+            </TabsList>
+          </Tabs>
+        </div>
       </header>
 
       {/* Main Content */}

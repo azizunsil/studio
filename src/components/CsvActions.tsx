@@ -1,3 +1,4 @@
+
 "use client"
 
 import React, { useRef } from 'react';
@@ -99,15 +100,15 @@ export function CsvActions() {
     <div className="flex gap-2">
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="ghost" size="icon" className="h-9 w-9 text-muted-foreground bg-slate-100 rounded-xl">
-            <MoreHorizontal className="h-5 w-5" />
+          <Button variant="ghost" size="icon" className="h-10 w-10 text-primary bg-slate-100 rounded-xl hover:bg-slate-200 shadow-sm border border-slate-200">
+            <MoreHorizontal className="h-6 w-6" />
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
-          <DropdownMenuItem onClick={handleExport}>
+        <DropdownMenuContent align="end" className="w-48">
+          <DropdownMenuItem onClick={handleExport} className="py-3">
             <Download className="mr-2 h-4 w-4" /> Ekspor CSV
           </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => fileInputRef.current?.click()}>
+          <DropdownMenuItem onClick={() => fileInputRef.current?.click()} className="py-3">
             <Upload className="mr-2 h-4 w-4" /> Impor CSV
           </DropdownMenuItem>
         </DropdownMenuContent>
