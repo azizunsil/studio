@@ -1,3 +1,4 @@
+
 import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import { Toaster } from "@/components/ui/toaster";
@@ -8,13 +9,6 @@ export const metadata: Metadata = {
   title: 'Barang dan Roris',
   description: 'Pencatatan harga produk usaha kecil realtime.',
   generator: 'Next.js',
-  manifest: '/manifest.json',
-  keywords: ['nextjs', 'pwa', 'barangdanroris', 'umkm'],
-  appleWebApp: {
-    capable: true,
-    statusBarStyle: 'default',
-    title: 'Barang dan Roris',
-  },
 };
 
 export const viewport: Viewport = {
