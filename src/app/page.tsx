@@ -9,7 +9,6 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Dialog, DialogTrigger } from '@/components/ui/dialog';
 import { Sheet, SheetTrigger } from '@/components/ui/sheet';
 import { ProductForm } from '@/components/ProductForm';
-import { CsvActions } from '@/components/CsvActions';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { LaporanDrawer } from '@/components/LaporanDrawer';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
@@ -60,7 +59,7 @@ export default function Home() {
   return (
     <div className="flex flex-col h-screen overflow-hidden bg-background">
       {/* Header Mobile Priority */}
-      <header className="px-4 pt-4 pb-2 bg-white/95 backdrop-blur-md sticky top-0 z-10 border-b flex flex-col gap-2">
+      <header className="px-4 pt-4 pb-2 bg-white/95 backdrop-blur-md sticky top-0 z-10 border-b flex flex-col gap-3">
         {/* Row 1: Logo & Branding */}
         <div className="flex items-center">
           <Sheet>
@@ -87,12 +86,7 @@ export default function Home() {
           />
         </div>
 
-        {/* Row 3: CSV Actions (50% Width Each) */}
-        <div className="w-full">
-          <CsvActions />
-        </div>
-
-        {/* Row 4: Categories (Horizontal Scroll) */}
+        {/* Row 3: Categories (Horizontal Scroll) */}
         <div className="w-full -mx-4 px-4 overflow-x-auto no-scrollbar touch-pan-x">
           <Tabs value={selectedCategory} onValueChange={setSelectedCategory} className="w-full">
             <TabsList className="h-auto bg-transparent p-0 justify-start flex flex-nowrap w-max gap-1.5 pb-1">

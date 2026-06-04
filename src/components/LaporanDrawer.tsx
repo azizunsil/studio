@@ -1,4 +1,3 @@
-
 "use client"
 
 import React from 'react';
@@ -6,6 +5,7 @@ import { SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/compo
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Product, Category } from '@/lib/types';
+import { CsvActions } from '@/components/CsvActions';
 
 interface LaporanDrawerProps {
   products: Product[];
@@ -103,6 +103,14 @@ export function LaporanDrawer({ products }: LaporanDrawerProps) {
                 <span>Potensi Laba Kotor</span>
                 <span>{formatCurrency(labaKotor)}</span>
               </div>
+            </div>
+          </section>
+
+          {/* TINDAKAN DATA */}
+          <section>
+            <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-3">=== CADANGAN DATA ===</h3>
+            <div className="pt-2">
+              <CsvActions />
             </div>
           </section>
         </div>
