@@ -1,20 +1,19 @@
-
 import type {Metadata} from 'next';
 import './globals.css';
 import { Toaster } from "@/components/ui/toaster";
 
 export const metadata: Metadata = {
-  title: 'SakuProduk',
+  title: 'Barang dan Roris',
   description: 'Pencatatan harga produk usaha kecil offline.',
   generator: 'Next.js',
   manifest: '/manifest.json',
-  keywords: ['nextjs', 'pwa', 'sakuproduk', 'umkm'],
+  keywords: ['nextjs', 'pwa', 'barangdanroris', 'umkm'],
   themeColor: '#2563eb',
   viewport: 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'default',
-    title: 'SakuProduk',
+    title: 'Barang dan Roris',
   },
   formatDetection: {
     telephone: false,

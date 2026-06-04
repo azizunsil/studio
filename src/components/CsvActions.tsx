@@ -2,7 +2,7 @@
 
 import React, { useRef } from 'react';
 import { Button } from '@/components/ui/button';
-import { Download, Upload, Loader2 } from 'lucide-react';
+import { Download, Upload } from 'lucide-react';
 import { getProducts, saveProducts } from '@/lib/storage';
 import { useToast } from '@/hooks/use-toast';
 import { Product } from '@/lib/types';
@@ -28,7 +28,7 @@ export function CsvActions({ onRefresh }: { onRefresh: () => void }) {
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.setAttribute("href", url);
-    link.setAttribute("download", `SakuProduk_Backup_${new Date().toISOString().split('T')[0]}.csv`);
+    link.setAttribute("download", `BarangDanRoris_Backup_${new Date().toISOString().split('T')[0]}.csv`);
     link.style.visibility = 'hidden';
     document.body.appendChild(link);
     link.click();
@@ -52,7 +52,7 @@ export function CsvActions({ onRefresh }: { onRefresh: () => void }) {
         for (let i = 1; i < lines.length; i++) {
           if (!lines[i].trim()) continue;
           
-          // Basic CSV parsing (handles simple cases)
+          // Basic CSV parsing
           const parts = lines[i].match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g);
           if (parts && parts.length >= 3) {
             products.push({
@@ -67,7 +67,6 @@ export function CsvActions({ onRefresh }: { onRefresh: () => void }) {
 
         if (products.length > 0) {
           const existing = getProducts();
-          // Avoid exact duplicates by name
           const merged = [...existing];
           products.forEach(newP => {
             if (!existing.some(e => e.namaProduk === newP.namaProduk)) {

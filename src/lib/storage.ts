@@ -1,6 +1,6 @@
 import { Product } from './types';
 
-const STORAGE_KEY = 'sakuproduk_data';
+const STORAGE_KEY = 'barang_dan_roris_data';
 
 export const getProducts = (): Product[] => {
   if (typeof window === 'undefined') return [];

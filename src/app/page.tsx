@@ -11,7 +11,6 @@ import { Dialog, DialogTrigger } from '@/components/ui/dialog';
 import { ProductForm } from '@/components/ProductForm';
 import { CsvActions } from '@/components/CsvActions';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { Separator } from '@/components/ui/separator';
 
 export default function Home() {
   const [products, setProducts] = useState<Product[]>([]);
@@ -62,7 +61,7 @@ export default function Home() {
             <div className="bg-primary p-2 rounded-xl">
               <Store className="h-5 w-5 text-white" />
             </div>
-            <h1 className="text-xl font-bold tracking-tight text-primary">SakuProduk</h1>
+            <h1 className="text-xl font-bold tracking-tight text-primary">Barang dan Roris</h1>
           </div>
         </div>
         
