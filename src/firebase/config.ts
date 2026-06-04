@@ -2,7 +2,7 @@
 'use client';
 
 /**
- * Konfigurasi Firebase App dengan kredensial asli.
+ * Konfigurasi Firebase App untuk proyek Barang dan Roris.
  * Menggunakan Realtime Database untuk mendukung paket gratis Spark.
  */
 export const firebaseConfig = {

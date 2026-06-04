@@ -2,11 +2,10 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { Database, ref, onValue, off, Query } from 'firebase/database';
+import { Database, ref, onValue, off } from 'firebase/database';
 
 /**
- * Hook untuk mendengarkan perubahan pada koleksi Realtime Database (RTDB) secara real-time.
- * Dioptimalkan untuk performa tinggi di paket gratis.
+ * Hook untuk mendengarkan perubahan pada koleksi Realtime Database secara real-time.
  */
 export function useCollection<T = any>(db: Database | null, path: string) {
   const [data, setData] = useState<T[]>([]);
@@ -38,12 +37,10 @@ export function useCollection<T = any>(db: Database | null, path: string) {
     };
 
     const handleError = (err: Error) => {
-      console.error("RTDB Error:", err);
       setError(err);
       setLoading(false);
     };
 
-    // Menggunakan onValue untuk sinkronisasi real-time otomatis
     onValue(dbRef, handleValue, handleError);
 
     return () => {

@@ -1,3 +1,4 @@
+
 export type Category = 'Rokok' | 'Sembako' | 'Minuman' | 'Sachet' | 'Lainnya';
 
 export interface Product {
