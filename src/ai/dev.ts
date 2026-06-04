@@ -1,4 +1,4 @@
 import { config } from 'dotenv';
 config();
 
-import '@/ai/flows/profit-margin-suggester.ts';
+// Flows removed as per request

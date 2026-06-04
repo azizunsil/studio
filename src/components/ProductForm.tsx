@@ -1,20 +1,18 @@
-
 "use client"
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { Product, Category } from '@/lib/types';
+import { Product } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Loader2, AlertCircle, TrendingUp } from 'lucide-react';
-import { suggestProfitMargin } from '@/ai/flows/profit-margin-suggester';
+import { Loader2 } from 'lucide-react';
 import { useFirestore } from '@/firebase';
-import { collection, doc, addDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, doc, addDoc, updateDoc } from 'firebase/firestore';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 
@@ -33,8 +31,6 @@ interface ProductFormProps {
 
 export function ProductForm({ product, onSuccess }: ProductFormProps) {
   const [loading, setLoading] = useState(false);
-  const [aiSuggestion, setAiSuggestion] = useState<string | null>(null);
-  const [evaluating, setEvaluating] = useState(false);
   const firestore = useFirestore();
 
   const { register, handleSubmit, watch, setValue, formState: { errors } } = useForm<z.infer<typeof schema>>({
@@ -56,38 +52,6 @@ export function ProductForm({ product, onSuccess }: ProductFormProps) {
       stok: '',
     }
   });
-
-  const watchModal = watch('modal');
-  const watchHargaJual = watch('hargaJual');
-  const watchNamaProduk = watch('namaProduk');
-
-  useEffect(() => {
-    const evaluate = async () => {
-      const modalVal = Number(watchModal);
-      const jualVal = Number(watchHargaJual);
-      
-      if (modalVal > 0 && jualVal > 0 && watchNamaProduk) {
-        setEvaluating(true);
-        try {
-          const result = await suggestProfitMargin({
-            namaProduk: watchNamaProduk,
-            hargaBeli: modalVal,
-            hargaJual: jualVal,
-          });
-          setAiSuggestion(result.suggestion);
-        } catch (error) {
-          // Silent fail
-        } finally {
-          setEvaluating(false);
-        }
-      } else {
-        setAiSuggestion(null);
-      }
-    };
-
-    const timer = setTimeout(evaluate, 500);
-    return () => clearTimeout(timer);
-  }, [watchModal, watchHargaJual, watchNamaProduk]);
 
   const onSubmit = (data: z.infer<typeof schema>) => {
     if (!firestore) return;
@@ -123,8 +87,6 @@ export function ProductForm({ product, onSuccess }: ProductFormProps) {
         });
     }
   };
-
-  const isLowMargin = aiSuggestion?.toLowerCase().includes('terlalu rendah');
 
   return (
     <DialogContent className="sm:max-w-[425px]">
@@ -175,13 +137,6 @@ export function ProductForm({ product, onSuccess }: ProductFormProps) {
           <Input id="stok" type="number" {...register('stok')} onFocus={(e) => e.target.select()} placeholder="0" />
           {errors.stok && <p className="text-xs text-destructive">{errors.stok.message}</p>}
         </div>
-
-        {aiSuggestion && !evaluating && (
-          <div className={`p-3 rounded-lg text-sm flex gap-3 ${isLowMargin ? 'bg-amber-50 text-amber-800 border border-amber-200' : 'bg-green-50 text-green-800 border border-green-200'}`}>
-            {isLowMargin ? <AlertCircle className="h-5 w-5 shrink-0" /> : <TrendingUp className="h-5 w-5 shrink-0" />}
-            <p className="leading-tight">{aiSuggestion}</p>
-          </div>
-        )}
 
         <DialogFooter className="pt-4">
           <Button type="submit" className="w-full" disabled={loading}>
