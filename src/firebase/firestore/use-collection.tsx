@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import {
   Query,
   onSnapshot,
@@ -19,6 +19,7 @@ export function useCollection<T = DocumentData>(query: Query<T> | null) {
   useEffect(() => {
     if (!query) {
       setLoading(false);
+      setData([]);
       return;
     }
 
@@ -50,10 +51,10 @@ export function useCollection<T = DocumentData>(query: Query<T> | null) {
   return { data, loading, error };
 }
 
+/**
+ * useMemoFirebase ensures that Firestore references/queries are stable across renders.
+ * This prevents infinite loops in hooks like useCollection or useDoc.
+ */
 export function useMemoFirebase<T>(factory: () => T, deps: any[]): T {
-  const [val, setVal] = useState<T>(factory);
-  useEffect(() => {
-    setVal(factory());
-  }, deps);
-  return val;
+  return useMemo(factory, deps);
 }

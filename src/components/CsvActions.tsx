@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Download, Upload, MoreHorizontal } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Product } from '@/lib/types';
-import { useFirestore, useCollection } from '@/firebase';
+import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { collection, addDoc, query } from 'firebase/firestore';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { errorEmitter } from '@/firebase/error-emitter';
@@ -15,9 +15,13 @@ export function CsvActions() {
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const firestore = useFirestore();
-  const { data: products = [] } = useCollection<Product>(
-    firestore ? query(collection(firestore, 'products')) : null
-  );
+
+  const productsQuery = useMemoFirebase(() => {
+    if (!firestore) return null;
+    return query(collection(firestore, 'products'));
+  }, [firestore]);
+
+  const { data: products = [] } = useCollection<Product>(productsQuery);
 
   const handleExport = () => {
     if (products.length === 0) {
