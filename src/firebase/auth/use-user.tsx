@@ -1,0 +1,23 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+import { User, onAuthStateChanged, Auth, signInAnonymously } from 'firebase/auth';
+
+export function useUser(auth: Auth) {
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (!user) {
+        signInAnonymously(auth);
+      }
+      setUser(user);
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, [auth]);
+
+  return { user, loading };
+}

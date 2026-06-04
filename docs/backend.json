@@ -1,0 +1,28 @@
+
+{
+  "entities": {
+    "Product": {
+      "title": "Product",
+      "description": "Data produk dagangan",
+      "type": "object",
+      "properties": {
+        "namaProduk": { "type": "string" },
+        "kategori": { "type": "string", "enum": ["Rokok", "Sembako", "Minuman", "Sachet", "Lainnya"] },
+        "modal": { "type": "number" },
+        "hargaJual": { "type": "number" },
+        "stok": { "type": "number" },
+        "createdAt": { "type": "number" }
+      },
+      "required": ["namaProduk", "kategori", "modal", "hargaJual", "stok"]
+    }
+  },
+  "auth": {
+    "providers": ["anonymous"]
+  },
+  "firestore": {
+    "/products/{productId}": {
+      "schema": "Product",
+      "description": "Koleksi produk global"
+    }
+  }
+}

@@ -1,48 +1,54 @@
+
 "use client"
 
-import React, { useState, useEffect, useMemo } from 'react';
-import { Search, Plus, Edit2, Trash2, Package, MoreVertical, Store } from 'lucide-react';
-import { Product } from '@/lib/types';
-import { getProducts, deleteProduct } from '@/lib/storage';
+import React, { useState, useMemo } from 'react';
+import { Search, Plus, Edit2, Trash2, Package, MoreVertical, Store, Filter } from 'lucide-react';
+import { Product, Category } from '@/lib/types';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Dialog, DialogTrigger } from '@/components/ui/dialog';
+import { Sheet, SheetTrigger } from '@/components/ui/sheet';
 import { ProductForm } from '@/components/ProductForm';
 import { CsvActions } from '@/components/CsvActions';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { LaporanDrawer } from '@/components/LaporanDrawer';
+import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
+import { collection, query, orderBy, deleteDoc, doc } from 'firebase/firestore';
+import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 export default function Home() {
-  const [products, setProducts] = useState<Product[]>([]);
   const [search, setSearch] = useState('');
-  const [isClient, setIsClient] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState<string>('Semua');
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
+  const firestore = useFirestore();
 
-  useEffect(() => {
-    setIsClient(true);
-    setProducts(getProducts());
-  }, []);
+  const productsQuery = useMemoFirebase(() => {
+    if (!firestore) return null;
+    return query(collection(firestore, 'products'), orderBy('createdAt', 'desc'));
+  }, [firestore]);
 
-  const refresh = () => {
-    setProducts(getProducts());
-  };
+  const { data: products = [], loading } = useCollection<Product>(productsQuery);
+
+  const categories = ['Semua', 'Rokok', 'Sembako', 'Minuman', 'Sachet', 'Lainnya'];
 
   const filteredProducts = useMemo(() => {
-    return products.filter(p => 
-      p.namaProduk.toLowerCase().includes(search.toLowerCase())
-    );
-  }, [products, search]);
+    return products.filter(p => {
+      const matchSearch = p.namaProduk.toLowerCase().includes(search.toLowerCase());
+      const matchCat = selectedCategory === 'Semua' || p.kategori === selectedCategory;
+      return matchSearch && matchCat;
+    });
+  }, [products, search, selectedCategory]);
 
   const handleDelete = (id: string) => {
+    if (!firestore) return;
     if (confirm('Hapus produk ini?')) {
-      deleteProduct(id);
-      refresh();
+      deleteDoc(doc(firestore, 'products', id));
     }
   };
-
-  if (!isClient) return null;
 
   const formatCurrency = (val: number) => {
     return new Intl.NumberFormat('id-ID', {
@@ -55,14 +61,20 @@ export default function Home() {
   return (
     <div className="flex flex-col h-screen overflow-hidden bg-background">
       {/* Header & Search */}
-      <header className="px-4 pt-6 pb-4 bg-white/80 backdrop-blur-md sticky top-0 z-10 border-b">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2">
-            <div className="bg-primary p-2 rounded-xl">
-              <Store className="h-5 w-5 text-white" />
-            </div>
-            <h1 className="text-xl font-bold tracking-tight text-primary">Barang dan Roris</h1>
-          </div>
+      <header className="px-4 pt-6 pb-2 bg-white/80 backdrop-blur-md sticky top-0 z-10 border-b space-y-3">
+        <div className="flex items-center justify-between">
+          <Sheet>
+            <SheetTrigger asChild>
+              <button className="flex items-center gap-2 hover:opacity-80 transition-opacity">
+                <div className="bg-primary p-2 rounded-xl">
+                  <Store className="h-5 w-5 text-white" />
+                </div>
+                <h1 className="text-xl font-bold tracking-tight text-primary">Barang dan Roris</h1>
+              </button>
+            </SheetTrigger>
+            <LaporanDrawer products={products} />
+          </Sheet>
+          <CsvActions />
         </div>
         
         <div className="relative">
@@ -74,29 +86,51 @@ export default function Home() {
             onChange={(e) => setSearch(e.target.value)}
           />
         </div>
+
+        <Tabs value={selectedCategory} onValueChange={setSelectedCategory} className="w-full">
+          <TabsList className="w-full h-9 bg-transparent p-0 justify-start overflow-x-auto overflow-y-hidden no-scrollbar">
+            {categories.map(cat => (
+              <TabsTrigger 
+                key={cat} 
+                value={cat}
+                className="rounded-full data-[state=active]:bg-primary data-[state=active]:text-white text-xs px-4 h-7 whitespace-nowrap"
+              >
+                {cat}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+        </Tabs>
       </header>
 
       {/* Main Content */}
       <div className="flex-1 overflow-y-auto px-4 py-4 pb-24">
-        <div className="mb-4">
-          <CsvActions onRefresh={refresh} />
-        </div>
-
-        {filteredProducts.length === 0 ? (
+        {loading ? (
+          <div className="flex justify-center py-20">
+            <Package className="h-8 w-8 animate-pulse text-muted-foreground opacity-20" />
+          </div>
+        ) : filteredProducts.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20 text-center opacity-50">
             <Package className="h-16 w-16 mb-4 text-muted-foreground" />
-            <p className="text-lg font-medium">Belum ada produk</p>
-            <p className="text-sm">Klik tombol + untuk menambahkan produk baru.</p>
+            <p className="text-lg font-medium">Tidak ada produk</p>
+            <p className="text-sm">Silakan tambahkan produk baru.</p>
           </div>
         ) : (
           <div className="grid gap-3">
             {filteredProducts.map((product) => (
               <Card key={product.id} className="overflow-hidden border-none shadow-sm hover:shadow-md transition-shadow">
                 <CardContent className="p-4 flex items-center justify-between">
-                  <div className="flex-1 min-w-0 pr-4">
-                    <h3 className="font-semibold text-slate-800 truncate">{product.namaProduk}</h3>
-                    <p className="text-lg font-bold text-secondary">
+                  <div className="flex-1 min-w-0 pr-2">
+                    <div className="flex items-center gap-2 mb-0.5">
+                      <h3 className="font-semibold text-slate-800 truncate">{product.namaProduk}</h3>
+                      <Badge variant="secondary" className="text-[10px] h-4 px-1.5 py-0 font-normal">
+                        {product.kategori}
+                      </Badge>
+                    </div>
+                    <p className="text-lg font-bold text-primary">
                       {formatCurrency(product.hargaJual)}
+                    </p>
+                    <p className="text-xs text-muted-foreground font-medium">
+                      Stok: <span className={product.stok < 5 ? 'text-destructive font-bold' : 'text-slate-600'}>{product.stok}</span>
                     </p>
                   </div>
                   
@@ -129,15 +163,12 @@ export default function Home() {
       <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
         <DialogTrigger asChild>
           <Button 
-            className="fixed bottom-6 right-6 h-14 w-14 rounded-full fab-shadow z-20 p-0"
+            className="fixed bottom-6 right-6 h-14 w-14 rounded-full fab-shadow z-20 p-0 shadow-lg shadow-primary/40"
           >
             <Plus className="h-8 w-8" />
           </Button>
         </DialogTrigger>
-        <ProductForm onSuccess={() => {
-          setIsAddOpen(false);
-          refresh();
-        }} />
+        <ProductForm onSuccess={() => setIsAddOpen(false)} />
       </Dialog>
 
       {/* Edit Dialog */}
@@ -148,7 +179,6 @@ export default function Home() {
             onSuccess={() => {
               setIsEditOpen(false);
               setEditingProduct(null);
-              refresh();
             }} 
           />
         )}

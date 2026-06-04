@@ -1,27 +1,33 @@
+
 "use client"
 
 import React, { useRef } from 'react';
 import { Button } from '@/components/ui/button';
-import { Download, Upload } from 'lucide-react';
-import { getProducts, saveProducts } from '@/lib/storage';
+import { Download, Upload, MoreHorizontal } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Product } from '@/lib/types';
+import { useFirestore, useCollection } from '@/firebase';
+import { collection, addDoc, query } from 'firebase/firestore';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 
-export function CsvActions({ onRefresh }: { onRefresh: () => void }) {
+export function CsvActions() {
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const firestore = useFirestore();
+  const { data: products = [] } = useCollection<Product>(
+    firestore ? query(collection(firestore, 'products')) : null
+  );
 
   const handleExport = () => {
-    const products = getProducts();
     if (products.length === 0) {
       toast({ title: "Gagal", description: "Tidak ada data untuk diekspor." });
       return;
     }
 
-    const headers = ["Nama Produk", "Harga Beli", "Harga Jual", "Dibuat Pada"];
+    const headers = ["Nama Produk", "Kategori", "Modal", "Harga Jual", "Stok", "Dibuat Pada"];
     const csvContent = [
       headers.join(","),
-      ...products.map(p => `"${p.namaProduk}",${p.hargaBeli},${p.hargaJual},${new Date(p.createdAt).toISOString()}`)
+      ...products.map(p => `"${p.namaProduk}","${p.kategori}",${p.modal},${p.hargaJual},${p.stok},${new Date(p.createdAt).toISOString()}`)
     ].join("\n");
 
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
@@ -39,45 +45,35 @@ export function CsvActions({ onRefresh }: { onRefresh: () => void }) {
 
   const handleImport = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (!file) return;
+    if (!file || !firestore) return;
 
     const reader = new FileReader();
-    reader.onload = (e) => {
+    reader.onload = async (e) => {
       try {
         const text = e.target?.result as string;
         const lines = text.split("\n");
-        const products: Product[] = [];
+        let importedCount = 0;
         
-        // Skip header
         for (let i = 1; i < lines.length; i++) {
           if (!lines[i].trim()) continue;
           
-          // Basic CSV parsing
           const parts = lines[i].match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g);
-          if (parts && parts.length >= 3) {
-            products.push({
-              id: crypto.randomUUID(),
+          if (parts && parts.length >= 5) {
+            const newProduct = {
               namaProduk: parts[0].replace(/"/g, ""),
-              hargaBeli: parseFloat(parts[1]),
-              hargaJual: parseFloat(parts[2]),
-              createdAt: parts[3] ? new Date(parts[3]).getTime() : Date.now(),
-            });
+              kategori: (parts[1] || 'Lainnya').replace(/"/g, "") as any,
+              modal: parseFloat(parts[2]),
+              hargaJual: parseFloat(parts[3]),
+              stok: parseFloat(parts[4]),
+              createdAt: parts[5] ? new Date(parts[5].replace(/"/g, "")).getTime() : Date.now(),
+            };
+
+            await addDoc(collection(firestore, 'products'), newProduct);
+            importedCount++;
           }
         }
 
-        if (products.length > 0) {
-          const existing = getProducts();
-          const merged = [...existing];
-          products.forEach(newP => {
-            if (!existing.some(e => e.namaProduk === newP.namaProduk)) {
-              merged.push(newP);
-            }
-          });
-          
-          saveProducts(merged);
-          onRefresh();
-          toast({ title: "Berhasil", description: `${products.length} produk diimpor.` });
-        }
+        toast({ title: "Berhasil", description: `${importedCount} produk berhasil diimpor ke Cloud.` });
       } catch (error) {
         toast({ title: "Gagal", description: "Format file CSV tidak valid." });
       }
@@ -88,12 +84,21 @@ export function CsvActions({ onRefresh }: { onRefresh: () => void }) {
 
   return (
     <div className="flex gap-2">
-      <Button variant="outline" size="sm" onClick={handleExport} className="flex-1">
-        <Download className="mr-2 h-4 w-4" /> Ekspor
-      </Button>
-      <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()} className="flex-1">
-        <Upload className="mr-2 h-4 w-4" /> Impor
-      </Button>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="ghost" size="icon" className="h-9 w-9 text-muted-foreground bg-slate-100 rounded-xl">
+            <MoreHorizontal className="h-5 w-5" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          <DropdownMenuItem onClick={handleExport}>
+            <Download className="mr-2 h-4 w-4" /> Ekspor CSV
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => fileInputRef.current?.click()}>
+            <Upload className="mr-2 h-4 w-4" /> Impor CSV
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
       <input
         type="file"
         ref={fileInputRef}
