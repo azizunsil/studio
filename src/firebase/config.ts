@@ -2,7 +2,7 @@
 
 /**
  * Konfigurasi Firebase App.
- * Nilai diambil dari variabel lingkungan yang harus dikonfigurasi di Firebase Console.
+ * Nilai diambil dari variabel lingkungan (.env) untuk keamanan dan kemudahan konfigurasi.
  */
 export const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
