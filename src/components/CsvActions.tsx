@@ -1,4 +1,3 @@
-
 "use client"
 
 import React, { useRef } from 'react';
@@ -9,6 +8,8 @@ import { Product } from '@/lib/types';
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, addDoc, query } from 'firebase/firestore';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError } from '@/firebase/errors';
 
 export function CsvActions() {
   const { toast } = useToast();
@@ -48,11 +49,12 @@ export function CsvActions() {
     if (!file || !firestore) return;
 
     const reader = new FileReader();
-    reader.onload = async (e) => {
+    reader.onload = (e) => {
       try {
         const text = e.target?.result as string;
         const lines = text.split("\n");
         let importedCount = 0;
+        const colRef = collection(firestore, 'products');
         
         for (let i = 1; i < lines.length; i++) {
           if (!lines[i].trim()) continue;
@@ -68,12 +70,19 @@ export function CsvActions() {
               createdAt: parts[5] ? new Date(parts[5].replace(/"/g, "")).getTime() : Date.now(),
             };
 
-            await addDoc(collection(firestore, 'products'), newProduct);
+            addDoc(colRef, newProduct)
+              .catch(async () => {
+                errorEmitter.emit('permission-error', new FirestorePermissionError({
+                  path: colRef.path,
+                  operation: 'create',
+                  requestResourceData: newProduct,
+                }));
+              });
             importedCount++;
           }
         }
 
-        toast({ title: "Berhasil", description: `${importedCount} produk berhasil diimpor ke Cloud.` });
+        toast({ title: "Proses Berhasil", description: `${importedCount} produk sedang diimpor ke Cloud.` });
       } catch (error) {
         toast({ title: "Gagal", description: "Format file CSV tidak valid." });
       }
