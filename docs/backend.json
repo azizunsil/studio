@@ -2,26 +2,26 @@
   "entities": {
     "Product": {
       "title": "Product",
-      "description": "Data produk dagangan untuk UMKM",
+      "description": "Data produk dagangan untuk UMKM di Realtime Database",
       "type": "object",
       "properties": {
-        "namaProduk": { "type": "string" },
+        "namaBarang": { "type": "string" },
         "kategori": { "type": "string", "enum": ["Rokok", "Sembako", "Minuman", "Sachet", "Lainnya"] },
         "modal": { "type": "number" },
         "hargaJual": { "type": "number" },
         "stok": { "type": "number" },
         "createdAt": { "type": "number" }
       },
-      "required": ["namaProduk", "kategori", "modal", "hargaJual", "stok"]
+      "required": ["namaBarang", "kategori", "modal", "hargaJual", "stok"]
     }
   },
   "auth": {
     "providers": ["anonymous"]
   },
-  "firestore": {
-    "/products/{productId}": {
+  "database": {
+    "products": {
       "schema": "Product",
-      "description": "Koleksi produk global yang dapat diakses oleh pengguna anonim"
+      "description": "Daftar produk usaha"
     }
   }
 }

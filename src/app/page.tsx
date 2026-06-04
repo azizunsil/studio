@@ -10,10 +10,8 @@ import { Dialog, DialogTrigger } from '@/components/ui/dialog';
 import { Sheet, SheetTrigger, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { ProductForm } from '@/components/ProductForm';
 import { LaporanDrawer } from '@/components/LaporanDrawer';
-import { useCollection, useFirestore, useMemoFirebase, useAuth, useUser } from '@/firebase';
-import { collection, deleteDoc, doc } from 'firebase/firestore';
-import { errorEmitter } from '@/firebase/error-emitter';
-import { FirestorePermissionError } from '@/firebase/errors';
+import { useCollection, useDatabase, useAuth, useUser } from '@/firebase';
+import { ref, remove } from 'firebase/database';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -25,16 +23,11 @@ export default function Home() {
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
   
-  const firestore = useFirestore();
+  const database = useDatabase();
   const auth = useAuth();
   const { user, loading: authLoading } = useUser(auth);
 
-  const productsQuery = useMemoFirebase(() => {
-    if (!firestore || !user) return null;
-    return collection(firestore, 'products');
-  }, [firestore, user]);
-
-  const { data: rawProducts = [], loading: dataLoading, error: firestoreError } = useCollection<Product>(productsQuery);
+  const { data: rawProducts = [], loading: dataLoading, error: dbError } = useCollection<Product>(database, 'products');
 
   const products = useMemo(() => {
     return [...rawProducts].sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
@@ -44,7 +37,7 @@ export default function Home() {
 
   const filteredProducts = useMemo(() => {
     return products.filter(p => {
-      const nama = p.namaProduk || '';
+      const nama = p.namaBarang || '';
       const matchSearch = nama.toLowerCase().includes(search.toLowerCase());
       const matchCat = selectedCategory === 'Semua' || p.kategori === selectedCategory;
       return matchSearch && matchCat;
@@ -52,14 +45,11 @@ export default function Home() {
   }, [products, search, selectedCategory]);
 
   const handleDelete = (id: string) => {
-    if (!firestore) return;
-    if (confirm('Hapus produk ini?')) {
-      const docRef = doc(firestore, 'products', id);
-      deleteDoc(docRef).catch(async () => {
-        errorEmitter.emit('permission-error', new FirestorePermissionError({
-          path: docRef.path,
-          operation: 'delete',
-        }));
+    if (!database) return;
+    if (confirm('Hapus barang ini?')) {
+      const itemRef = ref(database, `products/${id}`);
+      remove(itemRef).catch((err) => {
+        console.error("Delete Error:", err);
       });
     }
   };
@@ -121,14 +111,12 @@ export default function Home() {
       </header>
 
       <div className="flex-1 overflow-y-auto px-4 py-4 pb-28">
-        {firestoreError && (
+        {dbError && (
           <Alert variant="destructive" className="mb-4">
             <AlertCircle className="h-4 w-4" />
             <AlertTitle>Error Database</AlertTitle>
             <AlertDescription>
-              {firestoreError.message.includes('permissions') 
-                ? 'Izin ditolak. Pastikan Firestore Security Rules mengizinkan akses anonim.' 
-                : firestoreError.message}
+              {dbError.message}
             </AlertDescription>
           </Alert>
         )}
@@ -141,7 +129,7 @@ export default function Home() {
         ) : filteredProducts.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20 text-center opacity-50">
             <Package className="h-16 w-16 mb-4 text-muted-foreground/30" />
-            <p className="text-lg font-bold text-slate-800">Tidak ada produk</p>
+            <p className="text-lg font-bold text-slate-800">Tidak ada barang</p>
             <p className="text-sm">Mulai tambahkan barang dagangan Anda.</p>
           </div>
         ) : (
@@ -152,7 +140,7 @@ export default function Home() {
                   <div className="flex justify-between items-start">
                     <div className="flex-1 min-w-0 pr-8">
                       <div className="flex items-center gap-2 mb-1 flex-wrap">
-                        <h3 className="font-bold text-slate-800 truncate text-base leading-tight max-w-[150px]">{product.namaProduk}</h3>
+                        <h3 className="font-bold text-slate-800 truncate text-base leading-tight max-w-[150px]">{product.namaBarang}</h3>
                         <Badge variant="secondary" className="text-[9px] h-3.5 px-1.5 py-0 font-normal shrink-0 bg-slate-100 text-slate-600">
                           {product.kategori}
                         </Badge>
@@ -178,7 +166,7 @@ export default function Home() {
                           <SheetHeader className="mb-6 text-left">
                             <SheetTitle className="text-lg font-black flex items-center gap-2">
                               <Package className="h-5 w-5 text-primary" />
-                              {product.namaProduk}
+                              {product.namaBarang}
                             </SheetTitle>
                           </SheetHeader>
                           <div className="grid gap-3">

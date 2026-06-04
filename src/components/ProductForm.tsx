@@ -1,7 +1,6 @@
-
 "use client"
 
-import React, { useState } from 'react';
+import React from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -11,14 +10,11 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { useFirestore } from '@/firebase';
-import { collection, doc, addDoc, updateDoc } from 'firebase/firestore';
-import { errorEmitter } from '@/firebase/error-emitter';
-import { FirestorePermissionError } from '@/firebase/errors';
-import { Loader2 } from 'lucide-react';
+import { useDatabase } from '@/firebase';
+import { ref, push, update } from 'firebase/database';
 
 const schema = z.object({
-  namaProduk: z.string().min(1, 'Nama produk wajib diisi'),
+  namaBarang: z.string().min(1, 'Nama barang wajib diisi'),
   kategori: z.enum(['Rokok', 'Sembako', 'Minuman', 'Sachet', 'Lainnya']),
   modal: z.coerce.number().min(0, 'Modal tidak boleh negatif'),
   hargaJual: z.coerce.number().min(0, 'Harga jual tidak boleh negatif'),
@@ -31,18 +27,18 @@ interface ProductFormProps {
 }
 
 export function ProductForm({ product, onSuccess }: ProductFormProps) {
-  const firestore = useFirestore();
+  const database = useDatabase();
 
   const { register, handleSubmit, watch, setValue, formState: { errors } } = useForm<z.infer<typeof schema>>({
     resolver: zodResolver(schema),
     defaultValues: product ? {
-      namaProduk: product.namaProduk,
+      namaBarang: product.namaBarang,
       kategori: product.kategori,
       modal: product.modal,
       hargaJual: product.hargaJual,
       stok: product.stok,
     } : {
-      namaProduk: '',
+      namaBarang: '',
       kategori: 'Lainnya',
       // @ts-ignore
       modal: '',
@@ -54,32 +50,17 @@ export function ProductForm({ product, onSuccess }: ProductFormProps) {
   });
 
   const onSubmit = (data: z.infer<typeof schema>) => {
-    if (!firestore) return;
+    if (!database) return;
 
     if (product) {
-      const docRef = doc(firestore, 'products', product.id);
-      updateDoc(docRef, { ...data })
-        .catch(async () => {
-          errorEmitter.emit('permission-error', new FirestorePermissionError({
-            path: docRef.path,
-            operation: 'update',
-            requestResourceData: data,
-          }));
-        });
+      const itemRef = ref(database, `products/${product.id}`);
+      update(itemRef, { ...data }).catch((err) => console.error("Update Error:", err));
     } else {
-      const colRef = collection(firestore, 'products');
+      const productsRef = ref(database, 'products');
       const payload = { ...data, createdAt: Date.now() };
-      addDoc(colRef, payload)
-        .catch(async () => {
-          errorEmitter.emit('permission-error', new FirestorePermissionError({
-            path: colRef.path,
-            operation: 'create',
-            requestResourceData: payload,
-          }));
-        });
+      push(productsRef, payload).catch((err) => console.error("Create Error:", err));
     }
     
-    // Panggil onSuccess segera agar UI terasa instan
     onSuccess();
   };
 
@@ -87,19 +68,19 @@ export function ProductForm({ product, onSuccess }: ProductFormProps) {
     <DialogContent className="sm:max-w-[425px] rounded-t-3xl sm:rounded-2xl">
       <DialogHeader>
         <DialogTitle className="text-xl font-black text-slate-800">
-          {product ? 'Edit Produk' : 'Tambah Produk Baru'}
+          {product ? 'Edit Barang' : 'Tambah Barang Baru'}
         </DialogTitle>
       </DialogHeader>
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 py-4">
         <div className="space-y-2">
-          <Label htmlFor="namaProduk" className="font-bold text-slate-700">Nama Barang</Label>
+          <Label htmlFor="namaBarang" className="font-bold text-slate-700">Nama Barang</Label>
           <Input 
-            id="namaProduk" 
-            {...register('namaProduk')} 
+            id="namaBarang" 
+            {...register('namaBarang')} 
             placeholder="Contoh: Signature" 
             className="h-12 border-slate-200 focus:ring-primary bg-slate-50"
           />
-          {errors.namaProduk && <p className="text-xs text-destructive font-medium">{errors.namaProduk.message}</p>}
+          {errors.namaBarang && <p className="text-xs text-destructive font-medium">{errors.namaBarang.message}</p>}
         </div>
 
         <div className="space-y-2">
@@ -163,7 +144,7 @@ export function ProductForm({ product, onSuccess }: ProductFormProps) {
 
         <DialogFooter className="pt-4">
           <Button type="submit" className="w-full h-14 text-base font-black shadow-lg shadow-primary/20">
-            {product ? 'SIMPAN PERUBAHAN' : 'SIMPAN PRODUK'}
+            {product ? 'SIMPAN PERUBAHAN' : 'SIMPAN BARANG'}
           </Button>
         </DialogFooter>
       </form>
