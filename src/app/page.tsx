@@ -1,7 +1,7 @@
 "use client"
 
 import React, { useState, useMemo } from 'react';
-import { Search, Plus, Edit2, Trash2, Package, Store, MoreVertical, Loader2 } from 'lucide-react';
+import { Search, Plus, Edit2, Trash2, Package, Store, MoreVertical, Loader2, AlertCircle } from 'lucide-react';
 import { Product } from '@/lib/types';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -11,11 +11,12 @@ import { Sheet, SheetTrigger, SheetContent, SheetHeader, SheetTitle } from '@/co
 import { ProductForm } from '@/components/ProductForm';
 import { LaporanDrawer } from '@/components/LaporanDrawer';
 import { useCollection, useFirestore, useMemoFirebase, useAuth, useUser } from '@/firebase';
-import { collection, query, deleteDoc, doc } from 'firebase/firestore';
+import { collection, deleteDoc, doc } from 'firebase/firestore';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 export default function Home() {
   const [search, setSearch] = useState('');
@@ -28,15 +29,13 @@ export default function Home() {
   const auth = useAuth();
   const { user, loading: authLoading } = useUser(auth);
 
-  // Menyederhanakan query untuk menghindari error indexing di awal
   const productsQuery = useMemoFirebase(() => {
     if (!firestore || !user) return null;
     return collection(firestore, 'products');
   }, [firestore, user]);
 
-  const { data: rawProducts = [], loading: dataLoading } = useCollection<Product>(productsQuery);
+  const { data: rawProducts = [], loading: dataLoading, error: firestoreError } = useCollection<Product>(productsQuery);
 
-  // Mengurutkan di sisi klien untuk memastikan data muncul meskipun indeks server belum ada
   const products = useMemo(() => {
     return [...rawProducts].sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
   }, [rawProducts]);
@@ -122,6 +121,18 @@ export default function Home() {
       </header>
 
       <div className="flex-1 overflow-y-auto px-4 py-4 pb-28">
+        {firestoreError && (
+          <Alert variant="destructive" className="mb-4">
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle>Error Database</AlertTitle>
+            <AlertDescription>
+              {firestoreError.message.includes('permissions') 
+                ? 'Izin ditolak. Pastikan Firestore Security Rules mengizinkan akses anonim.' 
+                : firestoreError.message}
+            </AlertDescription>
+          </Alert>
+        )}
+
         {isLoading ? (
           <div className="flex flex-col items-center justify-center py-20 gap-3">
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
