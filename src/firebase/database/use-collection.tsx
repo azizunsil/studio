@@ -1,10 +1,12 @@
+
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { Database, ref, onValue, off } from 'firebase/database';
+import { Database, ref, onValue, off, Query } from 'firebase/database';
 
 /**
  * Hook untuk mendengarkan perubahan pada koleksi Realtime Database (RTDB) secara real-time.
+ * Dioptimalkan untuk performa tinggi di paket gratis.
  */
 export function useCollection<T = any>(db: Database | null, path: string) {
   const [data, setData] = useState<T[]>([]);
@@ -17,27 +19,31 @@ export function useCollection<T = any>(db: Database | null, path: string) {
       return;
     }
 
-    setLoading(true);
     const dbRef = ref(db, path);
+    setLoading(true);
 
     const handleValue = (snapshot: any) => {
       const items: T[] = [];
-      snapshot.forEach((childSnapshot: any) => {
-        items.push({
-          ...(childSnapshot.val() as any),
-          id: childSnapshot.key,
+      if (snapshot.exists()) {
+        snapshot.forEach((childSnapshot: any) => {
+          items.push({
+            ...(childSnapshot.val() as any),
+            id: childSnapshot.key,
+          });
         });
-      });
+      }
       setData(items);
       setLoading(false);
       setError(null);
     };
 
     const handleError = (err: Error) => {
+      console.error("RTDB Error:", err);
       setError(err);
       setLoading(false);
     };
 
+    // Menggunakan onValue untuk sinkronisasi real-time otomatis
     onValue(dbRef, handleValue, handleError);
 
     return () => {

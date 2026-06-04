@@ -1,3 +1,4 @@
+
 "use client"
 
 import React from 'react';
@@ -12,6 +13,7 @@ import { DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/compon
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useDatabase } from '@/firebase';
 import { ref, push, update } from 'firebase/database';
+import { useToast } from '@/hooks/use-toast';
 
 const schema = z.object({
   namaBarang: z.string().min(1, 'Nama barang wajib diisi'),
@@ -28,8 +30,9 @@ interface ProductFormProps {
 
 export function ProductForm({ product, onSuccess }: ProductFormProps) {
   const database = useDatabase();
+  const { toast } = useToast();
 
-  const { register, handleSubmit, watch, setValue, formState: { errors } } = useForm<z.infer<typeof schema>>({
+  const { register, handleSubmit, watch, setValue, formState: { errors, isSubmitting } } = useForm<z.infer<typeof schema>>({
     resolver: zodResolver(schema),
     defaultValues: product ? {
       namaBarang: product.namaBarang,
@@ -52,13 +55,18 @@ export function ProductForm({ product, onSuccess }: ProductFormProps) {
   const onSubmit = (data: z.infer<typeof schema>) => {
     if (!database) return;
 
+    // Menghilangkan await agar UI langsung merespon (Optimistic UI)
     if (product) {
       const itemRef = ref(database, `products/${product.id}`);
-      update(itemRef, { ...data }).catch((err) => console.error("Update Error:", err));
+      update(itemRef, { ...data }).catch((err) => {
+        toast({ variant: "destructive", title: "Gagal memperbarui", description: err.message });
+      });
     } else {
       const productsRef = ref(database, 'products');
       const payload = { ...data, createdAt: Date.now() };
-      push(productsRef, payload).catch((err) => console.error("Create Error:", err));
+      push(productsRef, payload).catch((err) => {
+        toast({ variant: "destructive", title: "Gagal menyimpan", description: err.message });
+      });
     }
     
     onSuccess();
@@ -134,7 +142,7 @@ export function ProductForm({ product, onSuccess }: ProductFormProps) {
           <Input 
             id="stok" 
             type="number" 
-              {...register('stok')} 
+            {...register('stok')} 
             onFocus={(e) => e.target.select()} 
             placeholder="0" 
             className="h-12 border-slate-200 bg-slate-50"
@@ -143,7 +151,7 @@ export function ProductForm({ product, onSuccess }: ProductFormProps) {
         </div>
 
         <DialogFooter className="pt-4">
-          <Button type="submit" className="w-full h-14 text-base font-black shadow-lg shadow-primary/20">
+          <Button type="submit" disabled={isSubmitting} className="w-full h-14 text-base font-black shadow-lg shadow-primary/20">
             {product ? 'SIMPAN PERUBAHAN' : 'SIMPAN BARANG'}
           </Button>
         </DialogFooter>
