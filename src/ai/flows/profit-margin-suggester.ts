@@ -86,7 +86,7 @@ const profitMarginSuggesterFlow = ai.defineFlow(
     // Calculate percentage based on selling price, common practice for retail margin
     const profitPercentageValue = (profitMarginValue / input.hargaJual) * 100;
 
-    const threshold = 20; // Example threshold for healthy margin percentage
+    const threshold = 10; // Target margin keuntungan diubah menjadi 10%
 
     const promptInput: ProfitMarginPromptInput = {
       namaProduk: input.namaProduk,
