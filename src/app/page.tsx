@@ -1,8 +1,7 @@
-
 "use client"
 
 import React, { useState, useMemo } from 'react';
-import { Search, Plus, Edit2, Trash2, Package, Store, MoreVertical } from 'lucide-react';
+import { Search, Plus, Edit2, Trash2, Package, Store, MoreVertical, Loader2 } from 'lucide-react';
 import { Product } from '@/lib/types';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -29,8 +28,10 @@ export default function Home() {
   const auth = useAuth();
   const { user, loading: authLoading } = useUser(auth);
 
+  // Menstabilkan query agar tidak memicu render loop
   const productsQuery = useMemoFirebase(() => {
     if (!firestore || !user) return null;
+    // Menggunakan orderBy agar data yang baru ditambah muncul di atas
     return query(collection(firestore, 'products'), orderBy('createdAt', 'desc'));
   }, [firestore, user]);
 
@@ -40,7 +41,8 @@ export default function Home() {
 
   const filteredProducts = useMemo(() => {
     return products.filter(p => {
-      const matchSearch = p.namaProduk.toLowerCase().includes(search.toLowerCase());
+      const nama = p.namaProduk || '';
+      const matchSearch = nama.toLowerCase().includes(search.toLowerCase());
       const matchCat = selectedCategory === 'Semua' || p.kategori === selectedCategory;
       return matchSearch && matchCat;
     });
@@ -67,7 +69,8 @@ export default function Home() {
     }).format(val);
   };
 
-  const isLoading = authLoading || dataLoading;
+  // Aplikasi dianggap memuat jika autentikasi belum siap ATAU data sedang diambil (jika user sudah ada)
+  const isLoading = authLoading || (user && dataLoading);
 
   return (
     <div className="flex flex-col h-screen overflow-hidden bg-background">
@@ -75,18 +78,18 @@ export default function Home() {
         <div className="px-4 flex items-center justify-between">
           <Sheet>
             <SheetTrigger asChild>
-              <button className="flex items-center gap-2 hover:opacity-80 transition-opacity min-w-0">
+              <button className="flex items-center gap-2 hover:opacity-80 transition-opacity min-w-0 text-left">
                 <div className="bg-primary p-1.5 rounded-lg shrink-0 shadow-sm shadow-primary/20">
                   <Store className="h-4 w-4 text-white" />
                 </div>
-                <h1 className="text-sm font-black tracking-tight text-primary truncate">BARANG & RORIS</h1>
+                <h1 className="text-sm font-black tracking-tight text-primary truncate uppercase">BARANG & RORIS</h1>
               </button>
             </SheetTrigger>
             <LaporanDrawer products={products} />
           </Sheet>
         </div>
         
-        <div className="px-4 relative w-full overflow-hidden">
+        <div className="px-4 relative w-full">
           <Search className="absolute left-7 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground z-10" />
           <Input 
             placeholder="Cari nama barang..." 
@@ -97,14 +100,14 @@ export default function Home() {
         </div>
 
         <div className="w-full overflow-hidden">
-          <div className="overflow-x-auto no-scrollbar touch-pan-x">
+          <div className="overflow-x-auto no-scrollbar touch-pan-x px-4 pb-2">
             <Tabs value={selectedCategory} onValueChange={setSelectedCategory} className="w-full">
-              <TabsList className="h-auto bg-transparent p-0 justify-start flex flex-nowrap w-max gap-1.5 pb-2 px-4">
+              <TabsList className="h-auto bg-transparent p-0 justify-start flex flex-nowrap w-max gap-1.5">
                 {categories.map(cat => (
                   <TabsTrigger 
                     key={cat} 
                     value={cat}
-                    className="rounded-full data-[state=active]:bg-primary data-[state=active]:text-white text-[10px] px-3 h-6 whitespace-nowrap border border-slate-200 shadow-sm shrink-0 bg-white font-medium"
+                    className="rounded-full data-[state=active]:bg-primary data-[state=active]:text-white text-[10px] px-3 h-7 whitespace-nowrap border border-slate-200 shadow-sm shrink-0 bg-white font-bold"
                   >
                     {cat}
                   </TabsTrigger>
@@ -118,14 +121,14 @@ export default function Home() {
       <div className="flex-1 overflow-y-auto px-4 py-4 pb-28">
         {isLoading ? (
           <div className="flex flex-col items-center justify-center py-20 gap-3">
-            <Package className="h-8 w-8 animate-bounce text-primary/40" />
-            <p className="text-xs text-slate-400 font-medium">Memuat data cloud...</p>
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            <p className="text-xs text-slate-400 font-bold uppercase tracking-wider">Sinkronisasi Cloud...</p>
           </div>
         ) : filteredProducts.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20 text-center opacity-50">
             <Package className="h-16 w-16 mb-4 text-muted-foreground/30" />
             <p className="text-lg font-bold text-slate-800">Tidak ada produk</p>
-            <p className="text-sm">Data Anda tersimpan aman di Cloud.</p>
+            <p className="text-sm">Mulai tambahkan barang dagangan Anda.</p>
           </div>
         ) : (
           <div className="grid gap-3">
