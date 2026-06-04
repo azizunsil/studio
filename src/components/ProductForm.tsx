@@ -32,7 +32,6 @@ interface ProductFormProps {
 
 export function ProductForm({ product, onSuccess }: ProductFormProps) {
   const firestore = useFirestore();
-  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const { register, handleSubmit, watch, setValue, formState: { errors } } = useForm<z.infer<typeof schema>>({
     resolver: zodResolver(schema),
@@ -54,28 +53,34 @@ export function ProductForm({ product, onSuccess }: ProductFormProps) {
     }
   });
 
-  const onSubmit = async (data: z.infer<typeof schema>) => {
+  const onSubmit = (data: z.infer<typeof schema>) => {
     if (!firestore) return;
-    setIsSubmitting(true);
 
-    try {
-      if (product) {
-        const docRef = doc(firestore, 'products', product.id);
-        await updateDoc(docRef, { ...data });
-      } else {
-        const colRef = collection(firestore, 'products');
-        await addDoc(colRef, { ...data, createdAt: Date.now() });
-      }
-      onSuccess();
-    } catch (error) {
-      errorEmitter.emit('permission-error', new FirestorePermissionError({
-        path: 'products',
-        operation: product ? 'update' : 'create',
-        requestResourceData: data,
-      }));
-    } finally {
-      setIsSubmitting(false);
+    if (product) {
+      const docRef = doc(firestore, 'products', product.id);
+      updateDoc(docRef, { ...data })
+        .catch(async () => {
+          errorEmitter.emit('permission-error', new FirestorePermissionError({
+            path: docRef.path,
+            operation: 'update',
+            requestResourceData: data,
+          }));
+        });
+    } else {
+      const colRef = collection(firestore, 'products');
+      const payload = { ...data, createdAt: Date.now() };
+      addDoc(colRef, payload)
+        .catch(async () => {
+          errorEmitter.emit('permission-error', new FirestorePermissionError({
+            path: colRef.path,
+            operation: 'create',
+            requestResourceData: payload,
+          }));
+        });
     }
+    
+    // Panggil onSuccess segera agar UI terasa instan
+    onSuccess();
   };
 
   return (
@@ -148,7 +153,7 @@ export function ProductForm({ product, onSuccess }: ProductFormProps) {
           <Input 
             id="stok" 
             type="number" 
-            {...register('stok')} 
+              {...register('stok')} 
             onFocus={(e) => e.target.select()} 
             placeholder="0" 
             className="h-12 border-slate-200 bg-slate-50"
@@ -157,15 +162,8 @@ export function ProductForm({ product, onSuccess }: ProductFormProps) {
         </div>
 
         <DialogFooter className="pt-4">
-          <Button type="submit" className="w-full h-14 text-base font-black shadow-lg shadow-primary/20" disabled={isSubmitting}>
-            {isSubmitting ? (
-              <>
-                <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                Menyimpan...
-              </>
-            ) : (
-              product ? 'SIMPAN PERUBAHAN' : 'SIMPAN PRODUK'
-            )}
+          <Button type="submit" className="w-full h-14 text-base font-black shadow-lg shadow-primary/20">
+            {product ? 'SIMPAN PERUBAHAN' : 'SIMPAN PRODUK'}
           </Button>
         </DialogFooter>
       </form>

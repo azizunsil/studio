@@ -13,6 +13,8 @@ import { ProductForm } from '@/components/ProductForm';
 import { LaporanDrawer } from '@/components/LaporanDrawer';
 import { useCollection, useFirestore, useMemoFirebase, useAuth, useUser } from '@/firebase';
 import { collection, query, orderBy, deleteDoc, doc } from 'firebase/firestore';
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError } from '@/firebase/errors';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
@@ -27,7 +29,6 @@ export default function Home() {
   const auth = useAuth();
   const { user, loading: authLoading } = useUser(auth);
 
-  // Pastikan query hanya berjalan setelah firestore dan user siap
   const productsQuery = useMemoFirebase(() => {
     if (!firestore || !user) return null;
     return query(collection(firestore, 'products'), orderBy('createdAt', 'desc'));
@@ -48,7 +49,13 @@ export default function Home() {
   const handleDelete = (id: string) => {
     if (!firestore) return;
     if (confirm('Hapus produk ini?')) {
-      deleteDoc(doc(firestore, 'products', id));
+      const docRef = doc(firestore, 'products', id);
+      deleteDoc(docRef).catch(async () => {
+        errorEmitter.emit('permission-error', new FirestorePermissionError({
+          path: docRef.path,
+          operation: 'delete',
+        }));
+      });
     }
   };
 
@@ -64,9 +71,7 @@ export default function Home() {
 
   return (
     <div className="flex flex-col h-screen overflow-hidden bg-background">
-      {/* Header Optimized to prevent horizontal overflow */}
       <header className="pt-4 pb-2 bg-white/95 backdrop-blur-md sticky top-0 z-10 border-b flex flex-col gap-2 shadow-sm">
-        {/* Row 1: Logo & Nav Trigger */}
         <div className="px-4 flex items-center justify-between">
           <Sheet>
             <SheetTrigger asChild>
@@ -81,7 +86,6 @@ export default function Home() {
           </Sheet>
         </div>
         
-        {/* Row 2: Full Width Search */}
         <div className="px-4 relative w-full overflow-hidden">
           <Search className="absolute left-7 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground z-10" />
           <Input 
@@ -92,7 +96,6 @@ export default function Home() {
           />
         </div>
 
-        {/* Row 3: Horizontal Scroll Category - Fixed Overflow */}
         <div className="w-full overflow-hidden">
           <div className="overflow-x-auto no-scrollbar touch-pan-x">
             <Tabs value={selectedCategory} onValueChange={setSelectedCategory} className="w-full">
@@ -112,7 +115,6 @@ export default function Home() {
         </div>
       </header>
 
-      {/* Main Content: Product Cards */}
       <div className="flex-1 overflow-y-auto px-4 py-4 pb-28">
         {isLoading ? (
           <div className="flex flex-col items-center justify-center py-20 gap-3">
@@ -148,7 +150,6 @@ export default function Home() {
                       </div>
                     </div>
 
-                    {/* Mobile Action Sheet Trigger */}
                     <div className="absolute top-2 right-1">
                       <Sheet>
                         <SheetTrigger asChild>
@@ -199,7 +200,6 @@ export default function Home() {
         )}
       </div>
 
-      {/* FAB: Add Button */}
       <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
         <DialogTrigger asChild>
           <Button 
@@ -211,7 +211,6 @@ export default function Home() {
         <ProductForm onSuccess={() => setIsAddOpen(false)} />
       </Dialog>
 
-      {/* Edit Dialog */}
       <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
         {editingProduct && (
           <ProductForm 
