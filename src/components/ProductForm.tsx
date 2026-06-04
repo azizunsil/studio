@@ -37,8 +37,10 @@ export function ProductForm({ product, onSuccess }: ProductFormProps) {
       hargaJual: product.hargaJual,
     } : {
       namaProduk: '',
-      hargaBeli: 0,
-      hargaJual: 0,
+      // @ts-ignore - Menggunakan string kosong untuk menghindari angka 0 default di UI
+      hargaBeli: '',
+      // @ts-ignore - Menggunakan string kosong untuk menghindari angka 0 default di UI
+      hargaJual: '',
     }
   });
 
@@ -48,17 +50,20 @@ export function ProductForm({ product, onSuccess }: ProductFormProps) {
 
   useEffect(() => {
     const evaluate = async () => {
-      if (watchHargaBeli > 0 && watchHargaJual > 0 && watchNamaProduk) {
+      const beli = Number(watchHargaBeli);
+      const jual = Number(watchHargaJual);
+      
+      if (beli > 0 && jual > 0 && watchNamaProduk) {
         setEvaluating(true);
         try {
           const result = await suggestProfitMargin({
             namaProduk: watchNamaProduk,
-            hargaBeli: watchHargaBeli,
-            hargaJual: watchHargaJual,
+            hargaBeli: beli,
+            hargaJual: jual,
           });
           setAiSuggestion(result.suggestion);
         } catch (error) {
-          console.error("AI Evaluation failed", error);
+          // Gagal secara senyap untuk evaluasi AI
         } finally {
           setEvaluating(false);
         }
@@ -82,6 +87,11 @@ export function ProductForm({ product, onSuccess }: ProductFormProps) {
     onSuccess();
   };
 
+  const handleFocus = (event: React.FocusEvent<HTMLInputElement>) => {
+    // Otomatis menyeleksi seluruh teks saat input difokuskan
+    event.target.select();
+  };
+
   const isLowMargin = aiSuggestion?.toLowerCase().includes('terlalu rendah');
 
   return (
@@ -98,12 +108,24 @@ export function ProductForm({ product, onSuccess }: ProductFormProps) {
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-2">
             <Label htmlFor="hargaBeli">Harga Beli (Rp)</Label>
-            <Input id="hargaBeli" type="number" {...register('hargaBeli')} />
+            <Input 
+              id="hargaBeli" 
+              type="number" 
+              {...register('hargaBeli')} 
+              onFocus={handleFocus}
+              placeholder="0"
+            />
             {errors.hargaBeli && <p className="text-xs text-destructive">{errors.hargaBeli.message}</p>}
           </div>
           <div className="space-y-2">
             <Label htmlFor="hargaJual">Harga Jual (Rp)</Label>
-            <Input id="hargaJual" type="number" {...register('hargaJual')} />
+            <Input 
+              id="hargaJual" 
+              type="number" 
+              {...register('hargaJual')} 
+              onFocus={handleFocus}
+              placeholder="0"
+            />
             {errors.hargaJual && <p className="text-xs text-destructive">{errors.hargaJual.message}</p>}
           </div>
         </div>
