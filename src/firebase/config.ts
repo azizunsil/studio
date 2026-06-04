@@ -1,9 +1,8 @@
-
 'use client';
 
 /**
  * Konfigurasi Firebase App.
- * Nilai diambil secara otomatis dari file .env.
+ * Nilai diambil dari variabel lingkungan yang harus dikonfigurasi di Firebase Console.
  */
 export const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
