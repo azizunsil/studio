@@ -2,7 +2,7 @@
 "use client"
 
 import React, { useState, useMemo } from 'react';
-import { Search, Plus, Edit2, Trash2, Package, Store } from 'lucide-react';
+import { Search, Plus, Edit2, Trash2, Package, Store, MoreVertical } from 'lucide-react';
 import { Product } from '@/lib/types';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -15,6 +15,12 @@ import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import { collection, query, orderBy, deleteDoc, doc } from 'firebase/firestore';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 export default function Home() {
   const [search, setSearch] = useState('');
@@ -101,7 +107,7 @@ export default function Home() {
         </div>
       </header>
 
-      {/* Main Content: Redesigned Product Cards */}
+      {/* Main Content: Product Cards with Side Menu */}
       <div className="flex-1 overflow-y-auto px-4 py-4 pb-28">
         {loading ? (
           <div className="flex justify-center py-20">
@@ -116,18 +122,18 @@ export default function Home() {
         ) : (
           <div className="grid gap-3">
             {filteredProducts.map((product) => (
-              <Card key={product.id} className="overflow-hidden border border-slate-100 shadow-sm">
+              <Card key={product.id} className="overflow-hidden border border-slate-100 shadow-sm relative">
                 <CardContent className="p-4">
-                  <div className="flex justify-between items-start mb-3">
-                    <div className="flex-1 min-w-0 pr-2">
+                  <div className="flex justify-between items-start">
+                    <div className="flex-1 min-w-0 pr-8">
                       <div className="flex items-center gap-2 mb-1">
-                        <h3 className="font-bold text-slate-800 truncate text-base">{product.namaProduk}</h3>
-                        <Badge variant="secondary" className="text-[10px] h-4 px-1.5 py-0 font-normal shrink-0">
+                        <h3 className="font-bold text-slate-800 truncate text-base leading-tight">{product.namaProduk}</h3>
+                        <Badge variant="secondary" className="text-[9px] h-3.5 px-1.5 py-0 font-normal shrink-0">
                           {product.kategori}
                         </Badge>
                       </div>
                       <div className="flex flex-col gap-0.5">
-                        <p className="text-xl font-black text-primary">
+                        <p className="text-lg font-black text-primary">
                           {formatCurrency(product.hargaJual)}
                         </p>
                         <p className="text-xs font-semibold text-slate-500">
@@ -135,29 +141,34 @@ export default function Home() {
                         </p>
                       </div>
                     </div>
-                  </div>
-                  
-                  {/* Action Buttons: Directly visible for quick access */}
-                  <div className="flex gap-2 border-t pt-3 mt-1">
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      className="flex-1 h-10 gap-2 font-semibold border-slate-200 text-slate-700 active:bg-slate-100"
-                      onClick={() => {
-                        setEditingProduct(product);
-                        setIsEditOpen(true);
-                      }}
-                    >
-                      <Edit2 className="h-4 w-4" /> Edit
-                    </Button>
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      className="flex-1 h-10 gap-2 font-semibold text-destructive border-destructive/20 active:bg-destructive/5 hover:text-destructive"
-                      onClick={() => handleDelete(product.id)}
-                    >
-                      <Trash2 className="h-4 w-4" /> Hapus
-                    </Button>
+
+                    {/* Kebab Menu at the Side of Name */}
+                    <div className="absolute top-3 right-2">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full text-slate-400">
+                            <MoreVertical className="h-5 w-5" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-32">
+                          <DropdownMenuItem 
+                            className="gap-2 cursor-pointer font-medium"
+                            onClick={() => {
+                              setEditingProduct(product);
+                              setIsEditOpen(true);
+                            }}
+                          >
+                            <Edit2 className="h-4 w-4" /> Edit
+                          </DropdownMenuItem>
+                          <DropdownMenuItem 
+                            className="gap-2 cursor-pointer font-medium text-destructive focus:text-destructive"
+                            onClick={() => handleDelete(product.id)}
+                          >
+                            <Trash2 className="h-4 w-4" /> Hapus
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
                   </div>
                 </CardContent>
               </Card>
