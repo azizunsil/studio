@@ -99,17 +99,17 @@ export function CsvActions() {
       <Button 
         variant="outline" 
         onClick={handleExport}
-        className="h-11 bg-white border-slate-200 shadow-sm rounded-xl hover:bg-slate-50 text-primary font-medium gap-2 text-xs"
+        className="h-9 bg-white border-slate-200 shadow-sm rounded-lg hover:bg-slate-50 text-primary font-medium gap-1.5 text-[10px]"
       >
-        <Download className="h-4 w-4" /> Ekspor CSV
+        <Download className="h-3.5 w-3.5" /> Ekspor CSV
       </Button>
 
       <Button 
         variant="outline" 
         onClick={() => fileInputRef.current?.click()}
-        className="h-11 bg-white border-slate-200 shadow-sm rounded-xl hover:bg-slate-50 text-primary font-medium gap-2 text-xs"
+        className="h-9 bg-white border-slate-200 shadow-sm rounded-lg hover:bg-slate-50 text-primary font-medium gap-1.5 text-[10px]"
       >
-        <Upload className="h-4 w-4" /> Impor CSV
+        <Upload className="h-3.5 w-3.5" /> Impor CSV
       </Button>
 
       <input
