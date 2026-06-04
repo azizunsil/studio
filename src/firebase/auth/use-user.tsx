@@ -5,32 +5,38 @@ import { User, onAuthStateChanged, Auth, signInAnonymously } from 'firebase/auth
 
 /**
  * Hook untuk memantau status autentikasi pengguna.
- * Memastikan pengguna selalu login (secara anonim) sebelum menghentikan status loading.
+ * Memastikan sesi anonim aktif sebelum mengizinkan akses ke database.
  */
 export function useUser(auth: Auth) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Berlangganan ke perubahan status auth
+    let isMounted = true;
+
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
-      if (!currentUser) {
-        // Jika tidak ada user, coba login anonim
-        try {
-          await signInAnonymously(auth);
-          // onAuthStateChanged akan dipicu kembali setelah login berhasil
-        } catch (error) {
-          console.error("Gagal login anonim:", error);
-          setLoading(false);
-        }
-      } else {
-        // User berhasil didapat
+      if (!isMounted) return;
+
+      if (currentUser) {
         setUser(currentUser);
         setLoading(false);
+      } else {
+        try {
+          // Hanya mencoba login jika memang benar-benar tidak ada user
+          await signInAnonymously(auth);
+        } catch (error) {
+          if (isMounted) {
+            console.error("Auth Error:", error);
+            setLoading(false);
+          }
+        }
       }
     });
 
-    return () => unsubscribe();
+    return () => {
+      isMounted = false;
+      unsubscribe();
+    };
   }, [auth]);
 
   return { user, loading };

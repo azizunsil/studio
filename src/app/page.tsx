@@ -11,7 +11,7 @@ import { Sheet, SheetTrigger, SheetContent, SheetHeader, SheetTitle } from '@/co
 import { ProductForm } from '@/components/ProductForm';
 import { LaporanDrawer } from '@/components/LaporanDrawer';
 import { useCollection, useFirestore, useMemoFirebase, useAuth, useUser } from '@/firebase';
-import { collection, query, orderBy, deleteDoc, doc } from 'firebase/firestore';
+import { collection, query, deleteDoc, doc } from 'firebase/firestore';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 import { Badge } from '@/components/ui/badge';
@@ -28,14 +28,18 @@ export default function Home() {
   const auth = useAuth();
   const { user, loading: authLoading } = useUser(auth);
 
-  // Menstabilkan query agar tidak memicu render loop
+  // Menyederhanakan query untuk menghindari error indexing di awal
   const productsQuery = useMemoFirebase(() => {
     if (!firestore || !user) return null;
-    // Menggunakan orderBy agar data yang baru ditambah muncul di atas
-    return query(collection(firestore, 'products'), orderBy('createdAt', 'desc'));
+    return collection(firestore, 'products');
   }, [firestore, user]);
 
-  const { data: products = [], loading: dataLoading } = useCollection<Product>(productsQuery);
+  const { data: rawProducts = [], loading: dataLoading } = useCollection<Product>(productsQuery);
+
+  // Mengurutkan di sisi klien untuk memastikan data muncul meskipun indeks server belum ada
+  const products = useMemo(() => {
+    return [...rawProducts].sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+  }, [rawProducts]);
 
   const categories = ['Semua', 'Rokok', 'Sembako', 'Minuman', 'Sachet', 'Lainnya'];
 
@@ -69,7 +73,6 @@ export default function Home() {
     }).format(val);
   };
 
-  // Aplikasi dianggap memuat jika autentikasi belum siap ATAU data sedang diambil (jika user sudah ada)
   const isLoading = authLoading || (user && dataLoading);
 
   return (

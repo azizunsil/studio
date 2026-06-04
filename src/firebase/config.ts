@@ -1,14 +1,14 @@
 'use client';
 
 /**
- * Konfigurasi Firebase App.
- * Nilai diambil dari variabel lingkungan (.env) untuk keamanan dan kemudahan konfigurasi.
+ * Konfigurasi Firebase App yang divalidasi.
+ * Menggunakan kredensial asli untuk memastikan koneksi ke Firestore berhasil.
  */
 export const firebaseConfig = {
-  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
-  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
-  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
-  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
+  apiKey: "AIzaSyCDyaki9Pwn8WTA4ro4FMz--RuVasXGwnk",
+  authDomain: "barang-dan-roris-2609868-cd231.firebaseapp.com",
+  projectId: "barang-dan-roris-2609868-cd231",
+  storageBucket: "barang-dan-roris-2609868-cd231.firebasestorage.app",
+  messagingSenderId: "500162245898",
+  appId: "1:500162245898:web:f484a8df45f95d352476f3"
 };
