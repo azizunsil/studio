@@ -1,3 +1,4 @@
+
 "use client"
 
 import React, { useState, useMemo } from 'react';
@@ -10,7 +11,7 @@ import { Dialog, DialogTrigger } from '@/components/ui/dialog';
 import { Sheet, SheetTrigger, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { ProductForm } from '@/components/ProductForm';
 import { LaporanDrawer } from '@/components/LaporanDrawer';
-import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
+import { useCollection, useFirestore, useMemoFirebase, useAuth, useUser } from '@/firebase';
 import { collection, query, orderBy, deleteDoc, doc } from 'firebase/firestore';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -21,14 +22,18 @@ export default function Home() {
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
+  
   const firestore = useFirestore();
+  const auth = useAuth();
+  const { user, loading: authLoading } = useUser(auth);
 
+  // Pastikan query hanya berjalan setelah firestore dan user siap
   const productsQuery = useMemoFirebase(() => {
-    if (!firestore) return null;
+    if (!firestore || !user) return null;
     return query(collection(firestore, 'products'), orderBy('createdAt', 'desc'));
-  }, [firestore]);
+  }, [firestore, user]);
 
-  const { data: products = [], loading } = useCollection<Product>(productsQuery);
+  const { data: products = [], loading: dataLoading } = useCollection<Product>(productsQuery);
 
   const categories = ['Semua', 'Rokok', 'Sembako', 'Minuman', 'Sachet', 'Lainnya'];
 
@@ -55,19 +60,21 @@ export default function Home() {
     }).format(val);
   };
 
+  const isLoading = authLoading || dataLoading;
+
   return (
     <div className="flex flex-col h-screen overflow-hidden bg-background">
       {/* Header Optimized to prevent horizontal overflow */}
-      <header className="pt-4 pb-2 bg-white/95 backdrop-blur-md sticky top-0 z-10 border-b flex flex-col gap-2">
+      <header className="pt-4 pb-2 bg-white/95 backdrop-blur-md sticky top-0 z-10 border-b flex flex-col gap-2 shadow-sm">
         {/* Row 1: Logo & Nav Trigger */}
         <div className="px-4 flex items-center justify-between">
           <Sheet>
             <SheetTrigger asChild>
               <button className="flex items-center gap-2 hover:opacity-80 transition-opacity min-w-0">
-                <div className="bg-primary p-1 rounded-lg shrink-0">
+                <div className="bg-primary p-1.5 rounded-lg shrink-0 shadow-sm shadow-primary/20">
                   <Store className="h-4 w-4 text-white" />
                 </div>
-                <h1 className="text-sm font-bold tracking-tight text-primary truncate">Barang & Roris</h1>
+                <h1 className="text-sm font-black tracking-tight text-primary truncate">BARANG & RORIS</h1>
               </button>
             </SheetTrigger>
             <LaporanDrawer products={products} />
@@ -94,7 +101,7 @@ export default function Home() {
                   <TabsTrigger 
                     key={cat} 
                     value={cat}
-                    className="rounded-full data-[state=active]:bg-primary data-[state=active]:text-white text-[10px] px-3.5 h-7 whitespace-nowrap border border-slate-200 shadow-sm shrink-0 bg-white"
+                    className="rounded-full data-[state=active]:bg-primary data-[state=active]:text-white text-[10px] px-3 h-6 whitespace-nowrap border border-slate-200 shadow-sm shrink-0 bg-white font-medium"
                   >
                     {cat}
                   </TabsTrigger>
@@ -107,26 +114,27 @@ export default function Home() {
 
       {/* Main Content: Product Cards */}
       <div className="flex-1 overflow-y-auto px-4 py-4 pb-28">
-        {loading ? (
-          <div className="flex justify-center py-20">
-            <Package className="h-8 w-8 animate-pulse text-muted-foreground opacity-20" />
+        {isLoading ? (
+          <div className="flex flex-col items-center justify-center py-20 gap-3">
+            <Package className="h-8 w-8 animate-bounce text-primary/40" />
+            <p className="text-xs text-slate-400 font-medium">Memuat data cloud...</p>
           </div>
         ) : filteredProducts.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20 text-center opacity-50">
-            <Package className="h-16 w-16 mb-4 text-muted-foreground" />
-            <p className="text-lg font-medium">Tidak ada produk</p>
-            <p className="text-sm">Silakan tambahkan produk baru.</p>
+            <Package className="h-16 w-16 mb-4 text-muted-foreground/30" />
+            <p className="text-lg font-bold text-slate-800">Tidak ada produk</p>
+            <p className="text-sm">Data Anda tersimpan aman di Cloud.</p>
           </div>
         ) : (
           <div className="grid gap-3">
             {filteredProducts.map((product) => (
-              <Card key={product.id} className="overflow-hidden border border-slate-100 shadow-sm relative w-full">
+              <Card key={product.id} className="overflow-hidden border border-slate-100 shadow-sm relative w-full hover:border-primary/20 transition-colors">
                 <CardContent className="p-4">
                   <div className="flex justify-between items-start">
                     <div className="flex-1 min-w-0 pr-8">
                       <div className="flex items-center gap-2 mb-1 flex-wrap">
                         <h3 className="font-bold text-slate-800 truncate text-base leading-tight max-w-[150px]">{product.namaProduk}</h3>
-                        <Badge variant="secondary" className="text-[9px] h-3.5 px-1.5 py-0 font-normal shrink-0">
+                        <Badge variant="secondary" className="text-[9px] h-3.5 px-1.5 py-0 font-normal shrink-0 bg-slate-100 text-slate-600">
                           {product.kategori}
                         </Badge>
                       </div>
@@ -144,13 +152,13 @@ export default function Home() {
                     <div className="absolute top-2 right-1">
                       <Sheet>
                         <SheetTrigger asChild>
-                          <Button variant="ghost" size="icon" className="h-10 w-10 rounded-full text-slate-400">
+                          <Button variant="ghost" size="icon" className="h-10 w-10 rounded-full text-slate-400 active:bg-slate-100">
                             <MoreVertical className="h-5 w-5" />
                           </Button>
                         </SheetTrigger>
                         <SheetContent side="bottom" className="rounded-t-2xl px-6 pb-10 pt-4 border-t-0 shadow-2xl">
                           <SheetHeader className="mb-6 text-left">
-                            <SheetTitle className="text-lg font-bold flex items-center gap-2">
+                            <SheetTitle className="text-lg font-black flex items-center gap-2">
                               <Package className="h-5 w-5 text-primary" />
                               {product.namaProduk}
                             </SheetTitle>
@@ -158,7 +166,7 @@ export default function Home() {
                           <div className="grid gap-3">
                             <Button 
                               variant="outline" 
-                              className="w-full h-14 justify-start gap-4 text-base font-semibold bg-slate-50 border-slate-200"
+                              className="w-full h-14 justify-start gap-4 text-base font-bold bg-slate-50 border-slate-200"
                               onClick={() => {
                                 setEditingProduct(product);
                                 setIsEditOpen(true);
@@ -171,7 +179,7 @@ export default function Home() {
                             </Button>
                             <Button 
                               variant="destructive" 
-                              className="w-full h-14 justify-start gap-4 text-base font-semibold"
+                              className="w-full h-14 justify-start gap-4 text-base font-bold"
                               onClick={() => handleDelete(product.id)}
                             >
                               <div className="bg-red-100/20 p-2 rounded-lg">
