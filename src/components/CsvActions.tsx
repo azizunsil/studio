@@ -97,7 +97,7 @@ export function CsvActions() {
   };
 
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex items-center gap-1.5 shrink-0">
       <TooltipProvider delayDuration={100}>
         <Tooltip>
           <TooltipTrigger asChild>
@@ -105,10 +105,10 @@ export function CsvActions() {
               variant="outline" 
               size="icon" 
               onClick={handleExport}
-              className="h-11 w-11 bg-white border-slate-200 shadow-sm rounded-xl hover:bg-slate-50 text-primary shrink-0"
+              className="h-10 w-10 bg-white border-slate-200 shadow-sm rounded-xl hover:bg-slate-50 text-primary shrink-0"
               aria-label="Ekspor CSV"
             >
-              <Download className="h-5 w-5" />
+              <Download className="h-4 w-4" />
             </Button>
           </TooltipTrigger>
           <TooltipContent><p>Ekspor CSV</p></TooltipContent>
@@ -120,10 +120,10 @@ export function CsvActions() {
               variant="outline" 
               size="icon" 
               onClick={() => fileInputRef.current?.click()}
-              className="h-11 w-11 bg-white border-slate-200 shadow-sm rounded-xl hover:bg-slate-50 text-primary shrink-0"
+              className="h-10 w-10 bg-white border-slate-200 shadow-sm rounded-xl hover:bg-slate-50 text-primary shrink-0"
               aria-label="Impor CSV"
             >
-              <Upload className="h-5 w-5" />
+              <Upload className="h-4 w-4" />
             </Button>
           </TooltipTrigger>
           <TooltipContent><p>Impor CSV</p></TooltipContent>
