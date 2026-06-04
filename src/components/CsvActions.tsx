@@ -1,4 +1,3 @@
-
 "use client"
 
 import React, { useRef } from 'react';
@@ -10,7 +9,6 @@ import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { collection, addDoc, query } from 'firebase/firestore';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 export function CsvActions() {
   const { toast } = useToast();
@@ -97,38 +95,22 @@ export function CsvActions() {
   };
 
   return (
-    <div className="flex items-center gap-1.5 shrink-0">
-      <TooltipProvider delayDuration={100}>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button 
-              variant="outline" 
-              size="icon" 
-              onClick={handleExport}
-              className="h-10 w-10 bg-white border-slate-200 shadow-sm rounded-xl hover:bg-slate-50 text-primary shrink-0"
-              aria-label="Ekspor CSV"
-            >
-              <Download className="h-4 w-4" />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent><p>Ekspor CSV</p></TooltipContent>
-        </Tooltip>
+    <div className="grid grid-cols-2 gap-2 w-full">
+      <Button 
+        variant="outline" 
+        onClick={handleExport}
+        className="h-11 bg-white border-slate-200 shadow-sm rounded-xl hover:bg-slate-50 text-primary font-medium gap-2 text-xs"
+      >
+        <Download className="h-4 w-4" /> Ekspor CSV
+      </Button>
 
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button 
-              variant="outline" 
-              size="icon" 
-              onClick={() => fileInputRef.current?.click()}
-              className="h-10 w-10 bg-white border-slate-200 shadow-sm rounded-xl hover:bg-slate-50 text-primary shrink-0"
-              aria-label="Impor CSV"
-            >
-              <Upload className="h-4 w-4" />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent><p>Impor CSV</p></TooltipContent>
-        </Tooltip>
-      </TooltipProvider>
+      <Button 
+        variant="outline" 
+        onClick={() => fileInputRef.current?.click()}
+        className="h-11 bg-white border-slate-200 shadow-sm rounded-xl hover:bg-slate-50 text-primary font-medium gap-2 text-xs"
+      >
+        <Upload className="h-4 w-4" /> Impor CSV
+      </Button>
 
       <input
         type="file"

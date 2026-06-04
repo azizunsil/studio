@@ -1,4 +1,3 @@
-
 "use client"
 
 import React, { useState, useMemo } from 'react';
@@ -60,9 +59,9 @@ export default function Home() {
 
   return (
     <div className="flex flex-col h-screen overflow-hidden bg-background">
-      {/* Header & Search */}
-      <header className="px-4 pt-4 pb-3 bg-white/90 backdrop-blur-md sticky top-0 z-10 border-b flex flex-col gap-3">
-        {/* Row 1: Logo */}
+      {/* Header Mobile Priority */}
+      <header className="px-4 pt-4 pb-3 bg-white/95 backdrop-blur-md sticky top-0 z-10 border-b flex flex-col gap-3">
+        {/* Row 1: Logo & Branding */}
         <div className="flex items-center">
           <Sheet>
             <SheetTrigger asChild>
@@ -77,39 +76,37 @@ export default function Home() {
           </Sheet>
         </div>
         
-        {/* Row 2: Search Bar + CSV Actions */}
-        <div className="flex items-center gap-2 w-full">
-          <div className="relative flex-1 min-w-0">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input 
-              placeholder="Cari..." 
-              className="pl-9 h-10 bg-slate-50 border-none shadow-sm rounded-xl focus-visible:ring-primary w-full"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
-          </div>
-          <div className="shrink-0">
-            <CsvActions />
-          </div>
+        {/* Row 2: Search Bar (Full Width) */}
+        <div className="relative w-full">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input 
+            placeholder="Cari nama barang..." 
+            className="pl-9 h-11 bg-slate-50 border-slate-200 shadow-sm rounded-xl focus-visible:ring-primary w-full"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
         </div>
 
-        {/* Row 3: Categories (Horizontal Scroll) */}
-        <div className="w-full overflow-hidden">
-          <div className="overflow-x-auto -mx-4 px-4 no-scrollbar touch-pan-x">
-            <Tabs value={selectedCategory} onValueChange={setSelectedCategory} className="w-full">
-              <TabsList className="h-auto bg-transparent p-0 justify-start flex flex-nowrap w-max gap-2 pb-1">
-                {categories.map(cat => (
-                  <TabsTrigger 
-                    key={cat} 
-                    value={cat}
-                    className="rounded-full data-[state=active]:bg-primary data-[state=active]:text-white text-xs px-4 h-8 whitespace-nowrap border border-slate-100 shadow-sm shrink-0"
-                  >
-                    {cat}
-                  </TabsTrigger>
-                ))}
-              </TabsList>
-            </Tabs>
-          </div>
+        {/* Row 3: CSV Actions (50% Width Each) */}
+        <div className="w-full">
+          <CsvActions />
+        </div>
+
+        {/* Row 4: Categories (Horizontal Scroll) */}
+        <div className="w-full -mx-4 px-4 overflow-x-auto no-scrollbar touch-pan-x">
+          <Tabs value={selectedCategory} onValueChange={setSelectedCategory} className="w-full">
+            <TabsList className="h-auto bg-transparent p-0 justify-start flex flex-nowrap w-max gap-2 pb-1">
+              {categories.map(cat => (
+                <TabsTrigger 
+                  key={cat} 
+                  value={cat}
+                  className="rounded-full data-[state=active]:bg-primary data-[state=active]:text-white text-xs px-4 h-9 whitespace-nowrap border border-slate-200 shadow-sm shrink-0 bg-white"
+                >
+                  {cat}
+                </TabsTrigger>
+              ))}
+            </TabsList>
+          </Tabs>
         </div>
       </header>
 
