@@ -1,7 +1,8 @@
+
 "use client"
 
 import React, { useState, useMemo } from 'react';
-import { Search, Plus, Edit2, Trash2, Package, MoreVertical, Store } from 'lucide-react';
+import { Search, Plus, Edit2, Trash2, Package, Store } from 'lucide-react';
 import { Product } from '@/lib/types';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -9,7 +10,6 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Dialog, DialogTrigger } from '@/components/ui/dialog';
 import { Sheet, SheetTrigger } from '@/components/ui/sheet';
 import { ProductForm } from '@/components/ProductForm';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { LaporanDrawer } from '@/components/LaporanDrawer';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import { collection, query, orderBy, deleteDoc, doc } from 'firebase/firestore';
@@ -58,10 +58,9 @@ export default function Home() {
 
   return (
     <div className="flex flex-col h-screen overflow-hidden bg-background">
-      {/* Header Mobile Priority */}
+      {/* Header Optimized for Mobile */}
       <header className="px-4 pt-4 pb-2 bg-white/95 backdrop-blur-md sticky top-0 z-10 border-b flex flex-col gap-3">
-        {/* Row 1: Logo & Branding */}
-        <div className="flex items-center">
+        <div className="flex items-center justify-between">
           <Sheet>
             <SheetTrigger asChild>
               <button className="flex items-center gap-2 hover:opacity-80 transition-opacity min-w-0">
@@ -75,7 +74,6 @@ export default function Home() {
           </Sheet>
         </div>
         
-        {/* Row 2: Search Bar (Full Width) */}
         <div className="relative w-full">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
           <Input 
@@ -86,7 +84,6 @@ export default function Home() {
           />
         </div>
 
-        {/* Row 3: Categories (Horizontal Scroll) */}
         <div className="w-full -mx-4 px-4 overflow-x-auto no-scrollbar touch-pan-x">
           <Tabs value={selectedCategory} onValueChange={setSelectedCategory} className="w-full">
             <TabsList className="h-auto bg-transparent p-0 justify-start flex flex-nowrap w-max gap-1.5 pb-1">
@@ -104,7 +101,7 @@ export default function Home() {
         </div>
       </header>
 
-      {/* Main Content */}
+      {/* Main Content: Redesigned Product Cards */}
       <div className="flex-1 overflow-y-auto px-4 py-4 pb-28">
         {loading ? (
           <div className="flex justify-center py-20">
@@ -119,41 +116,49 @@ export default function Home() {
         ) : (
           <div className="grid gap-3">
             {filteredProducts.map((product) => (
-              <Card key={product.id} className="overflow-hidden border-none shadow-sm hover:shadow-md transition-shadow">
-                <CardContent className="p-4 flex items-center justify-between">
-                  <div className="flex-1 min-w-0 pr-2">
-                    <div className="flex items-center gap-2 mb-0.5">
-                      <h3 className="font-semibold text-slate-800 truncate">{product.namaProduk}</h3>
-                      <Badge variant="secondary" className="text-[10px] h-4 px-1.5 py-0 font-normal">
-                        {product.kategori}
-                      </Badge>
+              <Card key={product.id} className="overflow-hidden border border-slate-100 shadow-sm">
+                <CardContent className="p-4">
+                  <div className="flex justify-between items-start mb-3">
+                    <div className="flex-1 min-w-0 pr-2">
+                      <div className="flex items-center gap-2 mb-1">
+                        <h3 className="font-bold text-slate-800 truncate text-base">{product.namaProduk}</h3>
+                        <Badge variant="secondary" className="text-[10px] h-4 px-1.5 py-0 font-normal shrink-0">
+                          {product.kategori}
+                        </Badge>
+                      </div>
+                      <div className="flex flex-col gap-0.5">
+                        <p className="text-xl font-black text-primary">
+                          {formatCurrency(product.hargaJual)}
+                        </p>
+                        <p className="text-xs font-semibold text-slate-500">
+                          Stok: <span className={product.stok < 5 ? 'text-destructive font-bold' : 'text-slate-700'}>{product.stok}</span>
+                        </p>
+                      </div>
                     </div>
-                    <p className="text-lg font-bold text-primary">
-                      {formatCurrency(product.hargaJual)}
-                    </p>
-                    <p className="text-xs text-muted-foreground font-medium">
-                      Stok: <span className={product.stok < 5 ? 'text-destructive font-bold' : 'text-slate-600'}>{product.stok}</span>
-                    </p>
                   </div>
                   
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground">
-                        <MoreVertical className="h-5 w-5" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="w-40">
-                      <DropdownMenuItem onClick={() => {
+                  {/* Action Buttons: Directly visible for quick access */}
+                  <div className="flex gap-2 border-t pt-3 mt-1">
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="flex-1 h-10 gap-2 font-semibold border-slate-200 text-slate-700 active:bg-slate-100"
+                      onClick={() => {
                         setEditingProduct(product);
                         setIsEditOpen(true);
-                      }}>
-                        <Edit2 className="mr-2 h-4 w-4" /> Edit
-                      </DropdownMenuItem>
-                      <DropdownMenuItem className="text-destructive" onClick={() => handleDelete(product.id)}>
-                        <Trash2 className="mr-2 h-4 w-4" /> Hapus
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+                      }}
+                    >
+                      <Edit2 className="h-4 w-4" /> Edit
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="flex-1 h-10 gap-2 font-semibold text-destructive border-destructive/20 active:bg-destructive/5 hover:text-destructive"
+                      onClick={() => handleDelete(product.id)}
+                    >
+                      <Trash2 className="h-4 w-4" /> Hapus
+                    </Button>
+                  </div>
                 </CardContent>
               </Card>
             ))}
@@ -165,7 +170,7 @@ export default function Home() {
       <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
         <DialogTrigger asChild>
           <Button 
-            className="fixed bottom-6 right-6 h-14 w-14 rounded-full fab-shadow z-20 p-0 shadow-lg shadow-primary/40"
+            className="fixed bottom-6 right-6 h-14 w-14 rounded-full fab-shadow z-20 p-0 shadow-lg shadow-primary/40 active:scale-95 transition-transform"
           >
             <Plus className="h-8 w-8" />
           </Button>
