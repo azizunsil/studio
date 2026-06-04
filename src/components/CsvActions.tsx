@@ -1,3 +1,4 @@
+
 "use client"
 
 import React, { useRef } from 'react';
@@ -96,17 +97,18 @@ export function CsvActions() {
   };
 
   return (
-    <div className="flex items-center gap-1.5">
-      <TooltipProvider>
+    <div className="flex items-center gap-2">
+      <TooltipProvider delayDuration={100}>
         <Tooltip>
           <TooltipTrigger asChild>
             <Button 
               variant="outline" 
               size="icon" 
               onClick={handleExport}
-              className="h-9 w-9 bg-white border-slate-200 shadow-sm rounded-lg hover:bg-slate-50 text-primary"
+              className="h-11 w-11 bg-white border-slate-200 shadow-sm rounded-xl hover:bg-slate-50 text-primary shrink-0"
+              aria-label="Ekspor CSV"
             >
-              <Download className="h-4 w-4" />
+              <Download className="h-5 w-5" />
             </Button>
           </TooltipTrigger>
           <TooltipContent><p>Ekspor CSV</p></TooltipContent>
@@ -118,9 +120,10 @@ export function CsvActions() {
               variant="outline" 
               size="icon" 
               onClick={() => fileInputRef.current?.click()}
-              className="h-9 w-9 bg-white border-slate-200 shadow-sm rounded-lg hover:bg-slate-50 text-primary"
+              className="h-11 w-11 bg-white border-slate-200 shadow-sm rounded-xl hover:bg-slate-50 text-primary shrink-0"
+              aria-label="Impor CSV"
             >
-              <Upload className="h-4 w-4" />
+              <Upload className="h-5 w-5" />
             </Button>
           </TooltipTrigger>
           <TooltipContent><p>Impor CSV</p></TooltipContent>

@@ -1,3 +1,4 @@
+
 "use client"
 
 import React, { useState, useMemo } from 'react';
@@ -61,7 +62,8 @@ export default function Home() {
     <div className="flex flex-col h-screen overflow-hidden bg-background">
       {/* Header & Search */}
       <header className="px-4 pt-4 pb-3 bg-white/80 backdrop-blur-md sticky top-0 z-10 border-b space-y-3">
-        <div className="flex items-center justify-between gap-2 overflow-hidden">
+        {/* Row 1: Logo & Title */}
+        <div className="flex items-center justify-between gap-2">
           <Sheet>
             <SheetTrigger asChild>
               <button className="flex items-center gap-2 hover:opacity-80 transition-opacity min-w-0">
@@ -73,29 +75,33 @@ export default function Home() {
             </SheetTrigger>
             <LaporanDrawer products={products} />
           </Sheet>
+        </div>
+        
+        {/* Row 2: Search Bar + CSV Actions */}
+        <div className="flex items-center gap-2">
+          <div className="relative flex-1 min-w-0">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input 
+              placeholder="Cari produk..." 
+              className="pl-10 h-11 bg-slate-50 border-none shadow-sm rounded-xl focus-visible:ring-primary w-full"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+          </div>
           <div className="shrink-0">
             <CsvActions />
           </div>
         </div>
-        
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input 
-            placeholder="Cari produk..." 
-            className="pl-10 h-11 bg-slate-50 border-none shadow-sm rounded-xl focus-visible:ring-primary"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
-        </div>
 
-        <div className="overflow-x-auto -mx-4 px-4 pb-1 no-scrollbar">
+        {/* Row 3: Categories (Horizontal Scroll) */}
+        <div className="overflow-x-auto -mx-4 px-4 pb-1 no-scrollbar touch-pan-x">
           <Tabs value={selectedCategory} onValueChange={setSelectedCategory} className="w-full">
-            <TabsList className="h-9 bg-transparent p-0 justify-start flex-nowrap w-max gap-1">
+            <TabsList className="h-9 bg-transparent p-0 justify-start flex-nowrap w-max gap-2 flex">
               {categories.map(cat => (
                 <TabsTrigger 
                   key={cat} 
                   value={cat}
-                  className="rounded-full data-[state=active]:bg-primary data-[state=active]:text-white text-xs px-4 h-7 whitespace-nowrap border border-slate-100 shadow-sm"
+                  className="rounded-full data-[state=active]:bg-primary data-[state=active]:text-white text-xs px-4 h-7 whitespace-nowrap border border-slate-100 shadow-sm shrink-0"
                 >
                   {cat}
                 </TabsTrigger>
