@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
@@ -20,7 +21,6 @@ export function useCollection<T = DocumentData>(query: Query<T> | null) {
   const [error, setError] = useState<FirestoreError | null>(null);
 
   useEffect(() => {
-    // Jika query belum siap (misal user belum login), biarkan loading tetap true atau false sesuai logika app
     if (!query) {
       setLoading(false);
       setData([]);
@@ -30,6 +30,7 @@ export function useCollection<T = DocumentData>(query: Query<T> | null) {
     setLoading(true);
     const unsubscribe = onSnapshot(
       query,
+      { includeMetadataChanges: true },
       (snapshot: QuerySnapshot<T>) => {
         const items = snapshot.docs.map((doc) => ({
           ...(doc.data() as any),
@@ -40,10 +41,8 @@ export function useCollection<T = DocumentData>(query: Query<T> | null) {
         setError(null);
       },
       async (err) => {
-        // Tangani error izin atau kegagalan query lainnya
         let path = 'unknown';
         try {
-          // Mencoba mendapatkan path dari query untuk konteks error
           path = (query as any)?._query?.path?.toString() || 'products';
         } catch (e) {}
 
@@ -52,7 +51,6 @@ export function useCollection<T = DocumentData>(query: Query<T> | null) {
           operation: 'list',
         } satisfies SecurityRuleContext);
 
-        // Emit error agar bisa ditangkap oleh listener global (FirebaseErrorListener)
         errorEmitter.emit('permission-error', permissionError);
         
         setError(err);
@@ -66,9 +64,6 @@ export function useCollection<T = DocumentData>(query: Query<T> | null) {
   return { data, loading, error };
 }
 
-/**
- * useMemoFirebase memastikan referensi/query Firestore stabil di seluruh render.
- */
 export function useMemoFirebase<T>(factory: () => T, deps: any[]): T {
   return useMemo(factory, deps);
 }

@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -21,8 +22,8 @@ export function useUser(auth: Auth) {
         setUser(currentUser);
         setLoading(false);
       } else {
+        // Jika tidak ada user, lakukan sign-in anonim
         try {
-          // Hanya mencoba login jika memang benar-benar tidak ada user
           await signInAnonymously(auth);
         } catch (error) {
           if (isMounted) {
