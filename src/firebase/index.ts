@@ -1,4 +1,3 @@
-
 'use client';
 
 import { initializeApp, getApps, getApp } from 'firebase/app';
@@ -8,6 +7,7 @@ import { firebaseConfig } from './config';
 
 /**
  * Inisialisasi Firebase App, Database (RTDB), dan Auth.
+ * Proyek ini telah dimigrasi sepenuhnya ke Realtime Database.
  */
 export function initializeFirebase() {
   const firebaseApp = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
@@ -22,3 +22,5 @@ export * from './client-provider';
 export * from './database/use-collection';
 export * from './database/use-doc';
 export * from './auth/use-user';
+export * from './error-emitter';
+export * from './errors';
