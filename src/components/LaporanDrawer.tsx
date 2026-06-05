@@ -11,8 +11,9 @@ import { Label } from '@/components/ui/label';
 import { Product, Category } from '@/lib/types';
 import { CsvActions } from '@/components/CsvActions';
 import { useDatabase, useDoc } from '@/firebase';
-import { ref, update } from 'firebase/database';
+import { ref, set } from 'firebase/database';
 import { Wallet, Target, ArrowRightLeft, TrendingUp, TrendingDown, CheckCircle2 } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
 
 interface LaporanDrawerProps {
   products: Product[];
@@ -20,12 +21,14 @@ interface LaporanDrawerProps {
 
 export function LaporanDrawer({ products }: LaporanDrawerProps) {
   const database = useDatabase();
+  const { toast } = useToast();
   const { data: settingsData } = useDoc(database, 'settings');
   const [targetInput, setTargetInput] = useState<string>('');
   
-  const modalTarget = (settingsData as any)?.modalTarget || 0;
+  const modalTarget = (settingsData as any)?.modalTarget ?? 0;
 
   useEffect(() => {
+    // Sinkronkan input dengan data dari database saat data dimuat
     if (modalTarget !== undefined && modalTarget !== null) {
       setTargetInput(modalTarget.toString());
     }
@@ -33,10 +36,26 @@ export function LaporanDrawer({ products }: LaporanDrawerProps) {
 
   const handleSaveTarget = () => {
     if (!database) return;
-    const val = parseFloat(targetInput);
-    if (!isNaN(val)) {
-      update(ref(database, 'settings'), { modalTarget: val });
-    }
+    
+    const val = parseFloat(targetInput) || 0;
+    
+    // Simpan langsung ke path spesifik settings/modalTarget
+    const targetRef = ref(database, 'settings/modalTarget');
+    
+    set(targetRef, val)
+      .then(() => {
+        toast({
+          title: "Target Diperbarui",
+          description: `Target modal baru berhasil disimpan: ${formatCurrency(val)}`,
+        });
+      })
+      .catch((error) => {
+        toast({
+          variant: "destructive",
+          title: "Gagal Simpan",
+          description: error.message || "Terjadi kesalahan saat menyimpan ke database.",
+        });
+      });
   };
 
   const formatCurrency = (val: number) => {
@@ -218,7 +237,7 @@ export function LaporanDrawer({ products }: LaporanDrawerProps) {
                     value={targetInput}
                     onChange={(e) => setTargetInput(e.target.value)}
                     placeholder="Masukkan angka..."
-                    className="h-9 text-xs font-bold border-slate-200"
+                    className="h-9 text-xs font-bold border-slate-200 bg-white"
                   />
                   <Button 
                     onClick={handleSaveTarget}
