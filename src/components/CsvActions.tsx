@@ -7,7 +7,7 @@ import { Download, Upload } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Product } from '@/lib/types';
 import { useDatabase, useCollection } from '@/firebase';
-import { ref, push } from 'firebase/database';
+import { ref, push, set } from 'firebase/database';
 
 export function CsvActions() {
   const { toast } = useToast();
@@ -22,7 +22,7 @@ export function CsvActions() {
       return;
     }
 
-    const headers = ["Nama Barang", "Kategori", "Modal", "Harga Jual", "Stok", "Stok Awal Titipan", "Terakhir Update Stok", "Dibuat Pada"];
+    const headers = ["ID Produk", "Nama Barang", "Kategori", "Modal", "Harga Jual", "Stok", "Stok Awal Titipan", "Terakhir Update Stok", "Dibuat Pada"];
     const csvContent = [
       headers.join(","),
       ...products.map(p => {
@@ -30,7 +30,7 @@ export function CsvActions() {
         const created = p.createdAt ? new Date(p.createdAt).toISOString() : new Date().toISOString();
         const stokAwal = p.kategori === 'Titipan' ? (p.stokAwalTitipan || 0) : 0;
         
-        return `"${p.namaBarang}","${p.kategori}",${p.modal},${p.hargaJual},${p.stok},${stokAwal},"${lastUpdate}","${created}"`;
+        return `"${p.id}","${p.namaBarang}","${p.kategori}",${p.modal},${p.hargaJual},${p.stok},${stokAwal},"${lastUpdate}","${created}"`;
       })
     ].join("\n");
 
@@ -56,79 +56,124 @@ export function CsvActions() {
       try {
         const text = e.target?.result as string;
         const lines = text.split("\n");
+        if (lines.length <= 1) return;
+
+        // Deteksi format dari header
+        const headerLine = lines[0].trim();
+        const hasIdColumn = headerLine.toLowerCase().includes("id produk");
+        
+        if (!hasIdColumn) {
+          toast({ 
+            variant: "destructive",
+            title: "Peringatan CSV Lama", 
+            description: "File tidak memiliki kolom ID. Mengimpor data ini dapat menyebabkan duplikasi produk." 
+          });
+        }
+
         let importedCount = 0;
-        const productsRef = ref(database, 'products');
+        let updatedCount = 0;
+        const now = Date.now();
         
         for (let i = 1; i < lines.length; i++) {
           const line = lines[i].trim();
           if (!line) continue;
           
-          // Regex untuk menangani kolom yang diapit tanda kutip (bisa berisi koma)
+          // Regex untuk menangani kolom yang diapit tanda kutip
           const parts = line.match(/(".*?"|[^",]+)(?=\s*,|\s*$)/g);
-          
-          if (parts && parts.length >= 5) {
-            const namaBarang = parts[0].replace(/"/g, "").trim();
-            const kategori = (parts[1] || 'Lainnya').replace(/"/g, "").trim() as any;
-            const modal = parseFloat(parts[2]) || 0;
-            const hargaJual = parseFloat(parts[3]) || 0;
-            const stok = parseFloat(parts[4]) || 0;
-            
-            // Kolom opsional (mendukung CSV lama)
-            let stokAwalTitipan = parts[5] ? parseFloat(parts[5]) : 0;
-            let lastStockUpdateAtRaw = parts[6] ? parts[6].replace(/"/g, "").trim() : '';
-            let createdAtRaw = parts[7] ? parts[7].replace(/"/g, "").trim() : '';
+          if (!parts) continue;
 
-            const now = Date.now();
-            
-            // Membangun payload dasar
-            const newProduct: any = {
-              namaBarang,
-              kategori,
-              modal,
-              hargaJual,
-              stok,
-            };
+          let idCsv = "";
+          let namaBarang = "";
+          let kategori = "Lainnya";
+          let modal = 0;
+          let hargaJual = 0;
+          let stok = 0;
+          let stokAwalTitipanCsv = 0;
+          let lastUpdateRaw = "";
+          let createdRaw = "";
 
-            // Logika khusus kategori 'Titipan'
-            if (kategori === 'Titipan') {
-              // Jika kolom Stok Awal Titipan kosong/tidak ada, gunakan nilai stok saat ini
-              newProduct.stokAwalTitipan = (isNaN(stokAwalTitipan) || !parts[5]) ? stok : stokAwalTitipan;
-            } else {
-              // Set null agar field terhapus/tidak ada di database untuk kategori biasa
-              newProduct.stokAwalTitipan = null;
-            }
+          if (hasIdColumn) {
+            idCsv = parts[0].replace(/"/g, "").trim();
+            namaBarang = (parts[1] || "").replace(/"/g, "").trim();
+            kategori = (parts[2] || "Lainnya").replace(/"/g, "").trim() as any;
+            modal = parseFloat(parts[3]) || 0;
+            hargaJual = parseFloat(parts[4]) || 0;
+            stok = parseFloat(parts[5]) || 0;
+            stokAwalTitipanCsv = parts[6] ? parseFloat(parts[6]) : 0;
+            lastUpdateRaw = parts[7] ? parts[7].replace(/"/g, "").trim() : "";
+            createdRaw = parts[8] ? parts[8].replace(/"/g, "").trim() : "";
+          } else {
+            // Format lama tanpa ID
+            namaBarang = parts[0].replace(/"/g, "").trim();
+            kategori = (parts[1] || "Lainnya").replace(/"/g, "").trim() as any;
+            modal = parseFloat(parts[2]) || 0;
+            hargaJual = parseFloat(parts[3]) || 0;
+            stok = parseFloat(parts[4]) || 0;
+            stokAwalTitipanCsv = parts[5] ? parseFloat(parts[5]) : 0;
+            lastUpdateRaw = parts[6] ? parts[6].replace(/"/g, "").trim() : "";
+            createdRaw = parts[7] ? parts[7].replace(/"/g, "").trim() : "";
+          }
 
-            // Logika Penanganan Tanggal
-            if (lastStockUpdateAtRaw) {
-              const date = new Date(lastStockUpdateAtRaw).getTime();
-              newProduct.lastStockUpdateAt = isNaN(date) ? now : date;
-            } else {
-              newProduct.lastStockUpdateAt = now;
-            }
+          if (!namaBarang) continue;
 
-            if (createdAtRaw) {
-              const date = new Date(createdAtRaw).getTime();
-              newProduct.createdAt = isNaN(date) ? now : date;
-            } else {
-              newProduct.createdAt = now;
-            }
+          // Bangun payload
+          const payload: any = {
+            namaBarang,
+            kategori,
+            modal,
+            hargaJual,
+            stok,
+          };
 
-            // Pastikan tidak ada property undefined yang terkirim
-            Object.keys(newProduct).forEach(key => {
-              if (newProduct[key] === undefined) {
-                delete newProduct[key];
-              }
-            });
+          // Logika Titipan
+          if (kategori === 'Titipan') {
+            payload.stokAwalTitipan = isNaN(stokAwalTitipanCsv) ? stok : stokAwalTitipanCsv;
+          } else {
+            payload.stokAwalTitipan = null;
+          }
 
-            push(productsRef, newProduct);
+          // Tanggal Update
+          if (lastUpdateRaw) {
+            const d = new Date(lastUpdateRaw).getTime();
+            payload.lastStockUpdateAt = isNaN(d) ? now : d;
+          } else {
+            payload.lastStockUpdateAt = now;
+          }
+
+          // Tanggal Dibuat
+          if (createdRaw) {
+            const d = new Date(createdRaw).getTime();
+            payload.createdAt = isNaN(d) ? now : d;
+          } else {
+            payload.createdAt = now;
+          }
+
+          // Pembersihan payload dari undefined
+          Object.keys(payload).forEach(key => {
+            if (payload[key] === undefined) delete payload[key];
+          });
+
+          // Simpan ke Firebase
+          if (idCsv) {
+            // Update data yang sudah ada
+            const itemRef = ref(database, `products/${idCsv}`);
+            set(itemRef, payload);
+            updatedCount++;
+          } else {
+            // Tambah data baru
+            const productsRef = ref(database, 'products');
+            push(productsRef, payload);
             importedCount++;
           }
         }
 
-        toast({ title: "Proses Berhasil", description: `${importedCount} barang sedang diimpor.` });
+        toast({ 
+          title: "Proses Selesai", 
+          description: `${updatedCount} produk diperbarui, ${importedCount} produk baru ditambahkan.` 
+        });
       } catch (error) {
         console.error("Import Error:", error);
-        toast({ title: "Gagal", description: "Format file CSV tidak valid." });
+        toast({ variant: "destructive", title: "Gagal", description: "Format file CSV tidak valid." });
       }
     };
     reader.readAsText(file);
