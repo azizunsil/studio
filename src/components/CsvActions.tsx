@@ -1,3 +1,4 @@
+
 "use client"
 
 import React, { useRef } from 'react';
@@ -21,10 +22,10 @@ export function CsvActions() {
       return;
     }
 
-    const headers = ["Nama Barang", "Kategori", "Modal", "Harga Jual", "Stok", "Dibuat Pada"];
+    const headers = ["Nama Barang", "Kategori", "Modal", "Harga Jual", "Stok", "Stok Awal Titipan", "Terakhir Update Stok", "Dibuat Pada"];
     const csvContent = [
       headers.join(","),
-      ...products.map(p => `"${p.namaBarang}","${p.kategori}",${p.modal},${p.hargaJual},${p.stok},${new Date(p.createdAt).toISOString()}`)
+      ...products.map(p => `"${p.namaBarang}","${p.kategori}",${p.modal},${p.hargaJual},${p.stok},${p.stokAwalTitipan || 0},"${p.lastStockUpdateAt ? new Date(p.lastStockUpdateAt).toISOString() : ''}","${new Date(p.createdAt).toISOString()}"`)
     ].join("\n");
 
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
@@ -63,7 +64,9 @@ export function CsvActions() {
               modal: parseFloat(parts[2]),
               hargaJual: parseFloat(parts[3]),
               stok: parseFloat(parts[4]),
-              createdAt: parts[5] ? new Date(parts[5].replace(/"/g, "")).getTime() : Date.now(),
+              stokAwalTitipan: parts[5] ? parseFloat(parts[5]) : 0,
+              lastStockUpdateAt: parts[6] ? new Date(parts[6].replace(/"/g, "")).getTime() : Date.now(),
+              createdAt: parts[7] ? new Date(parts[7].replace(/"/g, "")).getTime() : Date.now(),
             };
 
             push(productsRef, newProduct);
@@ -85,17 +88,17 @@ export function CsvActions() {
       <Button 
         variant="outline" 
         onClick={handleExport}
-        className="h-9 bg-white border-slate-200 shadow-sm rounded-lg hover:bg-slate-50 text-primary font-medium gap-1.5 text-[10px]"
+        className="h-9 bg-white border-slate-200 shadow-sm rounded-lg hover:bg-slate-50 text-primary font-bold gap-1.5 text-[10px]"
       >
-        <Download className="h-3.5 w-3.5" /> Ekspor CSV
+        <Download className="h-3.5 w-3.5" /> EKSPOR CSV
       </Button>
 
       <Button 
         variant="outline" 
         onClick={() => fileInputRef.current?.click()}
-        className="h-9 bg-white border-slate-200 shadow-sm rounded-lg hover:bg-slate-50 text-primary font-medium gap-1.5 text-[10px]"
+        className="h-9 bg-white border-slate-200 shadow-sm rounded-lg hover:bg-slate-50 text-primary font-bold gap-1.5 text-[10px]"
       >
-        <Upload className="h-3.5 w-3.5" /> Impor CSV
+        <Upload className="h-3.5 w-3.5" /> IMPOR CSV
       </Button>
 
       <input

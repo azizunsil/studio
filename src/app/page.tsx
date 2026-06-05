@@ -1,7 +1,8 @@
+
 "use client"
 
 import React, { useState, useMemo } from 'react';
-import { Search, Plus, Edit2, Trash2, Package, Store, MoreVertical, Loader2, AlertCircle } from 'lucide-react';
+import { Search, Plus, Edit2, Trash2, Package, Store, MoreVertical, Loader2, AlertCircle, Clock } from 'lucide-react';
 import { Product } from '@/lib/types';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -15,6 +16,8 @@ import { ref, remove } from 'firebase/database';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { format, isToday } from 'date-fns';
+import { id } from 'date-fns/locale';
 
 export default function Home() {
   const [search, setSearch] = useState('');
@@ -33,7 +36,7 @@ export default function Home() {
     return [...rawProducts].sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
   }, [rawProducts]);
 
-  const categories = ['Semua', 'Rokok', 'Sembako', 'Minuman', 'Sachet', 'Lainnya'];
+  const categories = ['Semua', 'Rokok', 'Sembako', 'Minuman', 'Sachet', 'Titipan', 'Lainnya'];
 
   const filteredProducts = useMemo(() => {
     return products.filter(p => {
@@ -62,6 +65,13 @@ export default function Home() {
     }).format(val);
   };
 
+  const formatDate = (timestamp?: number) => {
+    if (!timestamp) return '-';
+    const date = new Date(timestamp);
+    if (isToday(date)) return 'Hari ini';
+    return format(date, 'dd MMM yyyy', { locale: id });
+  };
+
   const isLoading = authLoading || (user && dataLoading);
 
   return (
@@ -85,7 +95,7 @@ export default function Home() {
           <Search className="absolute left-7 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground z-10" />
           <Input 
             placeholder="Cari nama barang..." 
-            className="pl-10 h-10 bg-slate-50 border-slate-200 shadow-sm rounded-lg focus-visible:ring-primary w-full text-sm"
+            className="pl-10 h-10 bg-slate-50 border-slate-200 shadow-sm rounded-lg focus-visible:ring-primary w-full text-sm font-medium"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
@@ -99,7 +109,7 @@ export default function Home() {
                   <TabsTrigger 
                     key={cat} 
                     value={cat}
-                    className="rounded-full data-[state=active]:bg-primary data-[state=active]:text-white text-[10px] px-3 h-7 whitespace-nowrap border border-slate-200 shadow-sm shrink-0 bg-white font-bold"
+                    className="rounded-full data-[state=active]:bg-primary data-[state=active]:text-white text-[10px] px-3 h-7 whitespace-nowrap border border-slate-200 shadow-sm shrink-0 bg-white font-bold uppercase tracking-wider"
                   >
                     {cat}
                   </TabsTrigger>
@@ -139,19 +149,42 @@ export default function Home() {
                 <CardContent className="p-4">
                   <div className="flex justify-between items-start">
                     <div className="flex-1 min-w-0 pr-8">
-                      <div className="flex items-center gap-2 mb-1 flex-wrap">
-                        <h3 className="font-bold text-slate-800 truncate text-base leading-tight max-w-[150px]">{product.namaBarang}</h3>
-                        <Badge variant="secondary" className="text-[9px] h-3.5 px-1.5 py-0 font-normal shrink-0 bg-slate-100 text-slate-600">
+                      <div className="flex items-center gap-2 mb-2 flex-wrap">
+                        <h3 className="font-bold text-slate-800 truncate text-base leading-tight max-w-[200px]">{product.namaBarang}</h3>
+                        <Badge variant="secondary" className={`text-[9px] h-3.5 px-1.5 py-0 font-bold shrink-0 ${product.kategori === 'Titipan' ? 'bg-blue-100 text-blue-700' : 'bg-slate-100 text-slate-600'}`}>
                           {product.kategori}
                         </Badge>
                       </div>
-                      <div className="flex flex-col gap-0.5">
-                        <p className="text-lg font-black text-primary">
-                          {formatCurrency(product.hargaJual)}
-                        </p>
-                        <p className="text-xs font-semibold text-slate-500">
-                          Stok: <span className={product.stok < 5 ? 'text-destructive font-bold' : 'text-slate-700'}>{product.stok}</span>
-                        </p>
+                      
+                      <div className="grid grid-cols-2 gap-y-2 mb-2">
+                        <div>
+                          <p className="text-[10px] text-slate-400 font-bold uppercase">Harga Jual</p>
+                          <p className="text-base font-black text-primary leading-tight">
+                            {formatCurrency(product.hargaJual)}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-[10px] text-slate-400 font-bold uppercase">Modal</p>
+                          <p className="text-xs font-bold text-slate-600">
+                            {formatCurrency(product.modal)}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-[10px] text-slate-400 font-bold uppercase">Stok</p>
+                          <p className="text-sm font-bold text-slate-800">
+                            <span className={product.stok < 5 ? 'text-destructive font-black' : ''}>{product.stok}</span>
+                            {product.kategori === 'Titipan' && product.stokAwalTitipan && (
+                              <span className="text-[10px] text-slate-400 ml-1 font-medium">(dari {product.stokAwalTitipan})</span>
+                            )}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-[10px] text-slate-400 font-bold uppercase">Update Stok</p>
+                          <div className="flex items-center gap-1 text-[10px] font-bold text-slate-500">
+                            <Clock className="h-2.5 w-2.5" />
+                            {formatDate(product.lastStockUpdateAt)}
+                          </div>
+                        </div>
                       </div>
                     </div>
 

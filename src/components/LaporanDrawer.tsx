@@ -1,3 +1,4 @@
+
 "use client"
 
 import React from 'react';
@@ -20,27 +21,50 @@ export function LaporanDrawer({ products }: LaporanDrawerProps) {
     }).format(val);
   };
 
-  const categories: Category[] = ['Rokok', 'Sembako', 'Minuman', 'Sachet', 'Lainnya'];
+  const categories: Category[] = ['Rokok', 'Sembako', 'Minuman', 'Sachet', 'Titipan', 'Lainnya'];
 
   const getStatsByCategory = (cat: Category) => {
     const filtered = products.filter(p => p.kategori === cat);
-    const modal = filtered.reduce((acc, p) => acc + (p.modal * p.stok), 0);
     const stok = filtered.reduce((acc, p) => acc + p.stok, 0);
     const count = filtered.length;
+
+    if (cat === 'Titipan') {
+      // Titipan: modal tidak dihitung dari stok gudang, tapi dari yang sudah terjual
+      const totalNilaiTerjual = filtered.reduce((acc, p) => {
+        const stokAwal = p.stokAwalTitipan || 0;
+        const terjual = Math.max(0, stokAwal - p.stok);
+        return acc + (terjual * p.modal);
+      }, 0);
+      return { modal: 0, stok, count, titipanTerjual: totalNilaiTerjual };
+    }
+
+    const modal = filtered.reduce((acc, p) => acc + (p.modal * p.stok), 0);
     return { modal, stok, count };
   };
 
-  const totalModal = products.reduce((acc, p) => acc + (p.modal * p.stok), 0);
+  const totalModalBiasa = products
+    .filter(p => p.kategori !== 'Titipan')
+    .reduce((acc, p) => acc + (p.modal * p.stok), 0);
+
+  const totalNilaiTitipanTerjual = products
+    .filter(p => p.kategori === 'Titipan')
+    .reduce((acc, p) => {
+      const terjual = Math.max(0, (p.stokAwalTitipan || 0) - p.stok);
+      return acc + (terjual * p.modal);
+    }, 0);
+
+  const totalModalAkhir = totalModalBiasa - totalNilaiTitipanTerjual;
+
   const totalNilaiJual = products.reduce((acc, p) => acc + (p.hargaJual * p.stok), 0);
   const totalStok = products.reduce((acc, p) => acc + p.stok, 0);
-  const labaKotor = totalNilaiJual - totalModal;
+  const labaKotor = totalNilaiJual - totalModalAkhir;
 
   return (
     <SheetContent side="left" className="w-[85%] sm:w-[350px] p-0 border-r-0">
       <SheetHeader className="p-6 bg-primary text-white">
-        <SheetTitle className="text-white text-xl">Laporan Inventaris</SheetTitle>
-        <SheetDescription className="text-primary-foreground/80">
-          Ringkasan modal dan stok barang.
+        <SheetTitle className="text-white text-xl font-black">LAPORAN USAHA</SheetTitle>
+        <SheetDescription className="text-primary-foreground/80 font-medium">
+          Ringkasan modal dan inventaris.
         </SheetDescription>
       </SheetHeader>
       
@@ -48,39 +72,51 @@ export function LaporanDrawer({ products }: LaporanDrawerProps) {
         <div className="space-y-6 pb-10">
           {/* LAPORAN MODAL */}
           <section>
-            <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-3">=== LAPORAN MODAL ===</h3>
+            <h3 className="text-xs font-black text-muted-foreground uppercase tracking-widest mb-3 flex items-center gap-2">
+              <div className="w-1.5 h-1.5 rounded-full bg-primary"></div>
+              Rincian Modal Stok
+            </h3>
             <div className="space-y-2">
-              {categories.map(cat => (
+              {categories.filter(c => c !== 'Titipan').map(cat => (
                 <div key={cat} className="flex justify-between text-sm">
-                  <span>Modal {cat}</span>
-                  <span className="font-medium">{formatCurrency(getStatsByCategory(cat).modal)}</span>
+                  <span className="text-slate-500 font-medium">{cat}</span>
+                  <span className="font-bold text-slate-700">{formatCurrency(getStatsByCategory(cat).modal)}</span>
                 </div>
               ))}
+              
+              <div className="flex justify-between text-sm pt-2">
+                <span className="text-blue-600 font-bold italic">Titipan Terjual (-)</span>
+                <span className="font-bold text-destructive">-{formatCurrency(totalNilaiTitipanTerjual)}</span>
+              </div>
+
               <Separator className="my-2" />
-              <div className="flex justify-between font-bold text-primary">
-                <span>Total Modal</span>
-                <span>{formatCurrency(totalModal)}</span>
+              <div className="flex justify-between font-black text-primary text-base">
+                <span>Total Modal Net</span>
+                <span>{formatCurrency(totalModalAkhir)}</span>
               </div>
             </div>
           </section>
 
           {/* RINGKASAN STOK */}
           <section>
-            <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-3">=== RINGKASAN STOK ===</h3>
+            <h3 className="text-xs font-black text-muted-foreground uppercase tracking-widest mb-3 flex items-center gap-2">
+              <div className="w-1.5 h-1.5 rounded-full bg-slate-400"></div>
+              Informasi Stok
+            </h3>
             <div className="space-y-2">
               {categories.map(cat => (
                 <div key={cat} className="flex justify-between text-sm">
-                  <span>Produk {cat}</span>
-                  <span className="font-medium">{getStatsByCategory(cat).stok} item</span>
+                  <span className="text-slate-500 font-medium">{cat}</span>
+                  <span className="font-bold text-slate-700">{getStatsByCategory(cat).stok} item</span>
                 </div>
               ))}
               <Separator className="my-2" />
-              <div className="flex justify-between text-sm">
+              <div className="flex justify-between text-sm font-bold text-slate-600">
                 <span>Total Jenis Produk</span>
-                <span className="font-medium">{products.length}</span>
+                <span>{products.length}</span>
               </div>
-              <div className="flex justify-between font-bold">
-                <span>Total Stok Seluruh</span>
+              <div className="flex justify-between font-black text-slate-800">
+                <span>Total Stok Gudang</span>
                 <span>{totalStok} item</span>
               </div>
             </div>
@@ -88,19 +124,19 @@ export function LaporanDrawer({ products }: LaporanDrawerProps) {
 
           {/* NILAI INVENTARIS */}
           <section className="bg-slate-50 p-4 rounded-xl border border-slate-100">
-            <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-3">=== NILAI INVENTARIS ===</h3>
+            <h3 className="text-xs font-black text-muted-foreground uppercase tracking-widest mb-3">Nilai Inventaris</h3>
             <div className="space-y-2">
               <div className="flex justify-between text-sm">
-                <span>Total Modal</span>
-                <span className="font-medium">{formatCurrency(totalModal)}</span>
+                <span className="text-slate-500">Total Modal</span>
+                <span className="font-bold">{formatCurrency(totalModalAkhir)}</span>
               </div>
               <div className="flex justify-between text-sm">
-                <span>Total Nilai Jual</span>
-                <span className="font-medium">{formatCurrency(totalNilaiJual)}</span>
+                <span className="text-slate-500">Total Nilai Jual</span>
+                <span className="font-bold">{formatCurrency(totalNilaiJual)}</span>
               </div>
               <Separator className="my-2" />
-              <div className="flex justify-between font-bold text-green-600">
-                <span>Potensi Laba Kotor</span>
+              <div className="flex justify-between font-black text-green-600 text-base">
+                <span>Sisa Potensi Laba</span>
                 <span>{formatCurrency(labaKotor)}</span>
               </div>
             </div>
@@ -108,7 +144,7 @@ export function LaporanDrawer({ products }: LaporanDrawerProps) {
 
           {/* TINDAKAN DATA */}
           <section>
-            <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-3">=== CADANGAN DATA ===</h3>
+            <h3 className="text-xs font-black text-muted-foreground uppercase tracking-widest mb-3">Cadangan Data</h3>
             <div className="pt-2">
               <CsvActions />
             </div>

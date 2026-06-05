@@ -7,10 +7,12 @@
       "type": "object",
       "properties": {
         "namaBarang": { "type": "string" },
-        "kategori": { "type": "string", "enum": ["Rokok", "Sembako", "Minuman", "Sachet", "Lainnya"] },
+        "kategori": { "type": "string", "enum": ["Rokok", "Sembako", "Minuman", "Sachet", "Titipan", "Lainnya"] },
         "modal": { "type": "number" },
         "hargaJual": { "type": "number" },
         "stok": { "type": "number" },
+        "stokAwalTitipan": { "type": "number", "description": "Hanya untuk kategori Titipan" },
+        "lastStockUpdateAt": { "type": "number" },
         "createdAt": { "type": "number" }
       },
       "required": ["namaBarang", "kategori", "modal", "hargaJual", "stok"]

@@ -1,7 +1,7 @@
 
 "use client"
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -17,10 +17,11 @@ import { useToast } from '@/hooks/use-toast';
 
 const schema = z.object({
   namaBarang: z.string().min(1, 'Nama barang wajib diisi'),
-  kategori: z.enum(['Rokok', 'Sembako', 'Minuman', 'Sachet', 'Lainnya']),
+  kategori: z.enum(['Rokok', 'Sembako', 'Minuman', 'Sachet', 'Titipan', 'Lainnya']),
   modal: z.coerce.number().min(0, 'Modal tidak boleh negatif'),
   hargaJual: z.coerce.number().min(0, 'Harga jual tidak boleh negatif'),
   stok: z.coerce.number().min(0, 'Stok tidak boleh negatif'),
+  stokAwalTitipan: z.coerce.number().optional(),
 });
 
 interface ProductFormProps {
@@ -40,6 +41,7 @@ export function ProductForm({ product, onSuccess }: ProductFormProps) {
       modal: product.modal,
       hargaJual: product.hargaJual,
       stok: product.stok,
+      stokAwalTitipan: product.stokAwalTitipan,
     } : {
       namaBarang: '',
       kategori: 'Lainnya',
@@ -49,22 +51,32 @@ export function ProductForm({ product, onSuccess }: ProductFormProps) {
       hargaJual: '',
       // @ts-ignore
       stok: '',
+      stokAwalTitipan: 0,
     }
   });
+
+  const selectedCategory = watch('kategori');
 
   const onSubmit = (data: z.infer<typeof schema>) => {
     if (!database) return;
 
-    // Menghilangkan await agar UI langsung merespon (Optimistic UI)
+    let updatePayload: any = { ...data };
+    const now = Date.now();
+
+    // Logika update stok terakhir
     if (product) {
+      if (data.stok !== product.stok) {
+        updatePayload.lastStockUpdateAt = now;
+      }
       const itemRef = ref(database, `products/${product.id}`);
-      update(itemRef, { ...data }).catch((err) => {
+      update(itemRef, updatePayload).catch((err) => {
         toast({ variant: "destructive", title: "Gagal memperbarui", description: err.message });
       });
     } else {
+      updatePayload.createdAt = now;
+      updatePayload.lastStockUpdateAt = now;
       const productsRef = ref(database, 'products');
-      const payload = { ...data, createdAt: Date.now() };
-      push(productsRef, payload).catch((err) => {
+      push(productsRef, updatePayload).catch((err) => {
         toast({ variant: "destructive", title: "Gagal menyimpan", description: err.message });
       });
     }
@@ -105,10 +117,25 @@ export function ProductForm({ product, onSuccess }: ProductFormProps) {
               <SelectItem value="Sembako">Sembako</SelectItem>
               <SelectItem value="Minuman">Minuman</SelectItem>
               <SelectItem value="Sachet">Sachet</SelectItem>
+              <SelectItem value="Titipan">Titipan</SelectItem>
               <SelectItem value="Lainnya">Lainnya</SelectItem>
             </SelectContent>
           </Select>
         </div>
+
+        {selectedCategory === 'Titipan' && (
+          <div className="space-y-2 bg-blue-50 p-3 rounded-lg border border-blue-100">
+            <Label htmlFor="stokAwalTitipan" className="font-bold text-blue-700">Stok Awal Titipan</Label>
+            <Input 
+              id="stokAwalTitipan" 
+              type="number" 
+              {...register('stokAwalTitipan')} 
+              placeholder="Jumlah awal dititipkan" 
+              className="h-12 border-blue-200 bg-white"
+            />
+            <p className="text-[10px] text-blue-500 italic">*Digunakan untuk menghitung pengurang modal.</p>
+          </div>
+        )}
 
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-2">
