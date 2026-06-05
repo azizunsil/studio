@@ -1,3 +1,4 @@
+
 "use client"
 
 import React, { useState, useEffect, useMemo } from 'react';
@@ -12,7 +13,7 @@ import { CsvActions } from '@/components/CsvActions';
 import { FullBackupActions } from '@/components/FullBackupActions';
 import { useDatabase, useDoc, useCollection, useAuth, useUser } from '@/firebase';
 import { ref, set, push, remove } from 'firebase/database';
-import { signInWithPopup, GoogleAuthProvider, signOut } from 'firebase/auth';
+import { signInWithRedirect, GoogleAuthProvider, signOut } from 'firebase/auth';
 import { Wallet, Target, ArrowRightLeft, TrendingUp, TrendingDown, CheckCircle2, History, Trash2, Clock, FileText, Lock, LogIn, LogOut, UserCheck } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
@@ -102,8 +103,8 @@ export function LaporanDrawer({ products }: LaporanDrawerProps) {
   const handleAdminLogin = async () => {
     const provider = new GoogleAuthProvider();
     try {
-      await signInWithPopup(auth, provider);
-      toast({ title: "Login Berhasil", description: "Selamat datang di Panel Admin." });
+      // Menggunakan Redirect sebagai pengganti Popup untuk stabilitas lebih baik
+      await signInWithRedirect(auth, provider);
     } catch (error: any) {
       toast({ variant: "destructive", title: "Login Gagal", description: error.message });
     }
