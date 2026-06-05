@@ -105,7 +105,7 @@ export function FullBackupActions() {
         onClick={handleBackup}
         className="h-9 bg-white border-slate-200 shadow-sm rounded-lg hover:bg-slate-50 text-primary font-bold gap-1.5 text-[10px]"
       >
-        <Database className="h-3.5 w-3.5" /> BACKUP LENGKAP JSON
+        <Database className="h-3.5 w-3.5" /> BACKUP LENGKAP
       </Button>
 
       <Button 
@@ -113,7 +113,7 @@ export function FullBackupActions() {
         onClick={() => fileInputRef.current?.click()}
         className="h-9 bg-white border-slate-200 shadow-sm rounded-lg hover:bg-slate-50 text-primary font-bold gap-1.5 text-[10px]"
       >
-        <FileUp className="h-3.5 w-3.5" /> RESTORE LENGKAP JSON
+        <FileUp className="h-3.5 w-3.5" /> RESTORE LENGKAP
       </Button>
 
       <input
