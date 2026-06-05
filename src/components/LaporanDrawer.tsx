@@ -1,3 +1,4 @@
+
 "use client"
 
 import React, { useState, useEffect } from 'react';
@@ -108,6 +109,74 @@ export function LaporanDrawer({ products }: LaporanDrawerProps) {
       
       <ScrollArea className="h-[calc(100vh-140px)] px-6 py-4">
         <div className="space-y-6 pb-20">
+          
+          {/* RINGKASAN STOK */}
+          <section>
+            <h3 className="text-xs font-black text-muted-foreground uppercase tracking-widest mb-3 flex items-center gap-2">
+              <div className="w-1.5 h-1.5 rounded-full bg-slate-400"></div>
+              Informasi Stok
+            </h3>
+            <div className="space-y-2">
+              {categories.map(cat => (
+                <div key={cat} className="flex justify-between text-sm">
+                  <span className="text-slate-500 font-medium">{cat}</span>
+                  <span className="font-bold text-slate-700">{getStatsByCategory(cat).stok} item</span>
+                </div>
+              ))}
+              <Separator className="my-2" />
+              <div className="flex justify-between text-sm font-bold text-slate-600">
+                <span>Total Jenis Produk</span>
+                <span>{products.length}</span>
+              </div>
+              <div className="flex justify-between font-black text-slate-800">
+                <span>Total Stok Gudang</span>
+                <span>{totalStok} item</span>
+              </div>
+            </div>
+          </section>
+
+          {/* LAPORAN MODAL */}
+          <section>
+            <h3 className="text-xs font-black text-muted-foreground uppercase tracking-widest mb-3 flex items-center gap-2">
+              <div className="w-1.5 h-1.5 rounded-full bg-primary"></div>
+              Rincian Modal Stok
+            </h3>
+            <div className="space-y-2">
+              {categories.filter(c => c !== 'Titipan').map(cat => (
+                <div key={cat} className="flex justify-between text-sm">
+                  <span className="text-slate-500 font-medium">{cat}</span>
+                  <span className="font-bold text-slate-700">{formatCurrency(getStatsByCategory(cat).modal)}</span>
+                </div>
+              ))}
+              
+              <div className="flex justify-between text-sm pt-2">
+                <span className="text-blue-600 font-bold italic">Titipan Terjual (-)</span>
+                <span className="font-bold text-destructive">-{formatCurrency(totalNilaiTitipanTerjual)}</span>
+              </div>
+
+              <Separator className="my-2" />
+              <div className="flex justify-between font-black text-primary text-base">
+                <span>Total Modal Net</span>
+                <span>{formatCurrency(totalModalAkhir)}</span>
+              </div>
+            </div>
+          </section>
+
+          {/* NILAI INVENTARIS */}
+          <section className="bg-slate-50 p-4 rounded-xl border border-slate-100">
+            <h3 className="text-xs font-black text-muted-foreground uppercase tracking-widest mb-3">Nilai Inventaris</h3>
+            <div className="space-y-2">
+              <div className="flex justify-between text-sm">
+                <span className="text-slate-500">Total Modal</span>
+                <span className="font-bold">{formatCurrency(totalModalAkhir)}</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-slate-500">Total Nilai Jual</span>
+                <span className="font-bold">{formatCurrency(totalNilaiJual)}</span>
+              </div>
+            </div>
+          </section>
+
           {/* CEK MODAL SECTION */}
           <section className="bg-slate-50 p-4 rounded-xl border border-slate-200 shadow-inner">
             <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-4 flex items-center gap-2">
@@ -158,73 +227,6 @@ export function LaporanDrawer({ products }: LaporanDrawerProps) {
                     Simpan
                   </Button>
                 </div>
-              </div>
-            </div>
-          </section>
-
-          {/* LAPORAN MODAL */}
-          <section>
-            <h3 className="text-xs font-black text-muted-foreground uppercase tracking-widest mb-3 flex items-center gap-2">
-              <div className="w-1.5 h-1.5 rounded-full bg-primary"></div>
-              Rincian Modal Stok
-            </h3>
-            <div className="space-y-2">
-              {categories.filter(c => c !== 'Titipan').map(cat => (
-                <div key={cat} className="flex justify-between text-sm">
-                  <span className="text-slate-500 font-medium">{cat}</span>
-                  <span className="font-bold text-slate-700">{formatCurrency(getStatsByCategory(cat).modal)}</span>
-                </div>
-              ))}
-              
-              <div className="flex justify-between text-sm pt-2">
-                <span className="text-blue-600 font-bold italic">Titipan Terjual (-)</span>
-                <span className="font-bold text-destructive">-{formatCurrency(totalNilaiTitipanTerjual)}</span>
-              </div>
-
-              <Separator className="my-2" />
-              <div className="flex justify-between font-black text-primary text-base">
-                <span>Total Modal Net</span>
-                <span>{formatCurrency(totalModalAkhir)}</span>
-              </div>
-            </div>
-          </section>
-
-          {/* RINGKASAN STOK */}
-          <section>
-            <h3 className="text-xs font-black text-muted-foreground uppercase tracking-widest mb-3 flex items-center gap-2">
-              <div className="w-1.5 h-1.5 rounded-full bg-slate-400"></div>
-              Informasi Stok
-            </h3>
-            <div className="space-y-2">
-              {categories.map(cat => (
-                <div key={cat} className="flex justify-between text-sm">
-                  <span className="text-slate-500 font-medium">{cat}</span>
-                  <span className="font-bold text-slate-700">{getStatsByCategory(cat).stok} item</span>
-                </div>
-              ))}
-              <Separator className="my-2" />
-              <div className="flex justify-between text-sm font-bold text-slate-600">
-                <span>Total Jenis Produk</span>
-                <span>{products.length}</span>
-              </div>
-              <div className="flex justify-between font-black text-slate-800">
-                <span>Total Stok Gudang</span>
-                <span>{totalStok} item</span>
-              </div>
-            </div>
-          </section>
-
-          {/* NILAI INVENTARIS */}
-          <section className="bg-slate-50 p-4 rounded-xl border border-slate-100">
-            <h3 className="text-xs font-black text-muted-foreground uppercase tracking-widest mb-3">Nilai Inventaris</h3>
-            <div className="space-y-2">
-              <div className="flex justify-between text-sm">
-                <span className="text-slate-500">Total Modal</span>
-                <span className="font-bold">{formatCurrency(totalModalAkhir)}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-slate-500">Total Nilai Jual</span>
-                <span className="font-bold">{formatCurrency(totalNilaiJual)}</span>
               </div>
             </div>
           </section>
