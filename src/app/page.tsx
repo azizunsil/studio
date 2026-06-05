@@ -101,10 +101,10 @@ export default function Home() {
           />
         </div>
 
-        <div className="w-full overflow-hidden">
-          <div className="overflow-x-auto no-scrollbar touch-pan-x px-4 pb-2">
+        <div className="w-full max-w-full overflow-x-auto no-scrollbar">
+          <div className="px-4 pb-2">
             <Tabs value={selectedCategory} onValueChange={setSelectedCategory} className="w-full">
-              <TabsList className="h-auto bg-transparent p-0 justify-start flex flex-nowrap w-max gap-1.5">
+              <TabsList className="h-auto bg-transparent p-0 justify-start flex flex-nowrap w-max gap-2">
                 {categories.map(cat => (
                   <TabsTrigger 
                     key={cat} 
