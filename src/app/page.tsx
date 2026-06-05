@@ -1,7 +1,7 @@
 "use client"
 
 import React, { useState, useMemo, useEffect } from 'react';
-import { Search, Plus, Edit2, Package, Store, MoreVertical, Loader2, AlertCircle, Clock, ArrowUpDown, LogOut, Lock, Building2 } from 'lucide-react';
+import { Search, Plus, Edit2, Package, Store, MoreVertical, Loader2, AlertCircle, Clock, ArrowUpDown, LogOut, Lock } from 'lucide-react';
 import { Product, Warung } from '@/lib/types';
 import { WARUNG_LIST } from '@/lib/constants';
 import { Input } from '@/components/ui/input';
@@ -21,6 +21,7 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { format, isToday } from 'date-fns';
 import { id } from 'date-fns/locale';
+import Image from 'next/image';
 
 export default function Home() {
   const [search, setSearch] = useState('');
@@ -173,11 +174,18 @@ export default function Home() {
   if (!activeWarung) {
     return (
       <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6 text-center">
-        <div className="bg-primary p-4 rounded-3xl shadow-xl shadow-primary/20 mb-8">
-          <Building2 className="h-12 w-12 text-white" />
+        <div className="mb-8 overflow-hidden rounded-3xl shadow-xl shadow-primary/10">
+          <Image 
+            src="/android-chrome-512x512.png" 
+            alt="Barang dan Roris Logo" 
+            width={96} 
+            height={96} 
+            className="h-24 w-24 object-contain"
+            priority
+          />
         </div>
         <h1 className="text-2xl font-black text-slate-800 mb-2 uppercase tracking-tight">PILIH TOKO</h1>
-        <p className="text-slate-500 text-sm mb-8 font-medium">Pilih cabang toko yang ingin Anda kelola.</p>
+        <p className="text-slate-500 text-sm mb-8 font-medium">Pilih toko yang ingin Anda kelola.</p>
         
         <div className="w-full max-w-xs space-y-4">
           <div className="space-y-2 text-left">
