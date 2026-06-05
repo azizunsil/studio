@@ -41,7 +41,7 @@ export function ProductForm({ product, onSuccess }: ProductFormProps) {
       modal: product.modal,
       hargaJual: product.hargaJual,
       stok: product.stok,
-      stokAwalTitipan: product.stokAwalTitipan,
+      stokAwalTitipan: product.stokAwalTitipan || 0,
     } : {
       namaBarang: '',
       kategori: 'Lainnya',
@@ -60,23 +60,43 @@ export function ProductForm({ product, onSuccess }: ProductFormProps) {
   const onSubmit = (data: z.infer<typeof schema>) => {
     if (!database) return;
 
-    let updatePayload: any = { ...data };
     const now = Date.now();
+    
+    // Membangun payload dasar yang bersih
+    const finalPayload: any = {
+      namaBarang: data.namaBarang,
+      kategori: data.kategori,
+      modal: Number(data.modal),
+      hargaJual: Number(data.hargaJual),
+      stok: Number(data.stok),
+    };
 
-    // Logika update stok terakhir
+    // Penanganan khusus stokAwalTitipan
+    if (data.kategori === 'Titipan') {
+      finalPayload.stokAwalTitipan = Number(data.stokAwalTitipan || 0);
+    } else {
+      // Di Realtime Database, update dengan nilai null akan menghapus field tersebut
+      finalPayload.stokAwalTitipan = null;
+    }
+
     if (product) {
-      if (data.stok !== product.stok) {
-        updatePayload.lastStockUpdateAt = now;
+      // Logika update: cek apakah stok berubah untuk memperbarui timestamp
+      if (finalPayload.stok !== product.stok) {
+        finalPayload.lastStockUpdateAt = now;
+      } else {
+        finalPayload.lastStockUpdateAt = product.lastStockUpdateAt || now;
       }
+      
       const itemRef = ref(database, `products/${product.id}`);
-      update(itemRef, updatePayload).catch((err) => {
+      update(itemRef, finalPayload).catch((err) => {
         toast({ variant: "destructive", title: "Gagal memperbarui", description: err.message });
       });
     } else {
-      updatePayload.createdAt = now;
-      updatePayload.lastStockUpdateAt = now;
+      // Logika tambah baru
+      finalPayload.createdAt = now;
+      finalPayload.lastStockUpdateAt = now;
       const productsRef = ref(database, 'products');
-      push(productsRef, updatePayload).catch((err) => {
+      push(productsRef, finalPayload).catch((err) => {
         toast({ variant: "destructive", title: "Gagal menyimpan", description: err.message });
       });
     }
@@ -186,3 +206,4 @@ export function ProductForm({ product, onSuccess }: ProductFormProps) {
     </DialogContent>
   );
 }
+
