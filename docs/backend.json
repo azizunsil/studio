@@ -1,4 +1,3 @@
-
 {
   "entities": {
     "Product": {
@@ -16,6 +15,14 @@
         "createdAt": { "type": "number" }
       },
       "required": ["namaBarang", "kategori", "modal", "hargaJual", "stok"]
+    },
+    "Settings": {
+      "title": "Settings",
+      "description": "Pengaturan aplikasi seperti target modal",
+      "type": "object",
+      "properties": {
+        "modalTarget": { "type": "number" }
+      }
     }
   },
   "auth": {
@@ -25,6 +32,10 @@
     "products": {
       "schema": "Product",
       "description": "Daftar produk usaha"
+    },
+    "settings": {
+      "schema": "Settings",
+      "description": "Konfigurasi aplikasi"
     }
   }
 }

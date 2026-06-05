@@ -1,17 +1,43 @@
 "use client"
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+import { Label } from '@/components/ui/label';
 import { Product, Category } from '@/lib/types';
 import { CsvActions } from '@/components/CsvActions';
+import { useDatabase, useDoc } from '@/firebase';
+import { ref, update } from 'firebase/database';
+import { Wallet, Target, ArrowRightLeft, TrendingUp, TrendingDown, CheckCircle2 } from 'lucide-react';
 
 interface LaporanDrawerProps {
   products: Product[];
 }
 
 export function LaporanDrawer({ products }: LaporanDrawerProps) {
+  const database = useDatabase();
+  const { data: settingsData } = useDoc(database, 'settings');
+  const [targetInput, setTargetInput] = useState<string>('');
+  
+  const modalTarget = (settingsData as any)?.modalTarget || 0;
+
+  useEffect(() => {
+    if (modalTarget !== undefined && modalTarget !== null) {
+      setTargetInput(modalTarget.toString());
+    }
+  }, [modalTarget]);
+
+  const handleSaveTarget = () => {
+    if (!database) return;
+    const val = parseFloat(targetInput);
+    if (!isNaN(val)) {
+      update(ref(database, 'settings'), { modalTarget: val });
+    }
+  };
+
   const formatCurrency = (val: number) => {
     return new Intl.NumberFormat('id-ID', {
       style: 'currency',
@@ -28,7 +54,6 @@ export function LaporanDrawer({ products }: LaporanDrawerProps) {
     const count = filtered.length;
 
     if (cat === 'Titipan') {
-      // Titipan: modal tidak dihitung dari stok gudang, tapi dari yang sudah terjual
       const totalNilaiTerjual = filtered.reduce((acc, p) => {
         const stokAwal = p.stokAwalTitipan || 0;
         const terjual = Math.max(0, stokAwal - p.stok);
@@ -53,9 +78,24 @@ export function LaporanDrawer({ products }: LaporanDrawerProps) {
     }, 0);
 
   const totalModalAkhir = totalModalBiasa - totalNilaiTitipanTerjual;
-
   const totalNilaiJual = products.reduce((acc, p) => acc + (p.hargaJual * p.stok), 0);
   const totalStok = products.reduce((acc, p) => acc + p.stok, 0);
+
+  // Perhitungan Cek Modal
+  const selisih = totalModalAkhir - modalTarget;
+  let status = 'Aman';
+  let statusColor = 'text-blue-600';
+  let StatusIcon = CheckCircle2;
+
+  if (selisih > 0) {
+    status = 'Surplus';
+    statusColor = 'text-emerald-600';
+    StatusIcon = TrendingUp;
+  } else if (selisih < 0) {
+    status = 'Kurang';
+    statusColor = 'text-destructive';
+    StatusIcon = TrendingDown;
+  }
 
   return (
     <SheetContent side="left" className="w-[85%] sm:w-[350px] p-0 border-r-0">
@@ -67,7 +107,61 @@ export function LaporanDrawer({ products }: LaporanDrawerProps) {
       </SheetHeader>
       
       <ScrollArea className="h-[calc(100vh-140px)] px-6 py-4">
-        <div className="space-y-6 pb-10">
+        <div className="space-y-6 pb-20">
+          {/* CEK MODAL SECTION */}
+          <section className="bg-slate-50 p-4 rounded-xl border border-slate-200 shadow-inner">
+            <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-4 flex items-center gap-2">
+              <Wallet className="h-3 w-3" />
+              Cek Modal Toko
+            </h3>
+            
+            <div className="space-y-3">
+              <div className="flex justify-between items-center">
+                <span className="text-xs text-slate-500 font-bold uppercase">Target Modal</span>
+                <span className="font-black text-slate-700">{formatCurrency(modalTarget)}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-xs text-slate-500 font-bold uppercase">Modal Saat Ini</span>
+                <span className="font-black text-primary">{formatCurrency(totalModalAkhir)}</span>
+              </div>
+              
+              <Separator className="bg-slate-200" />
+              
+              <div className="flex justify-between items-center">
+                <div className="flex flex-col">
+                  <span className="text-[10px] text-slate-400 font-black uppercase">Selisih</span>
+                  <span className={`text-sm font-black ${statusColor}`}>
+                    {selisih >= 0 ? '+' : ''}{formatCurrency(selisih)}
+                  </span>
+                </div>
+                <div className={`flex items-center gap-1.5 px-3 py-1 rounded-full bg-white border border-slate-100 shadow-sm ${statusColor}`}>
+                  <StatusIcon className="h-3.5 w-3.5" />
+                  <span className="text-xs font-black uppercase tracking-tight">{status}</span>
+                </div>
+              </div>
+
+              <div className="pt-4 space-y-2">
+                <Label htmlFor="modalTarget" className="text-[10px] font-black text-slate-400 uppercase">Update Target Modal</Label>
+                <div className="flex gap-2">
+                  <Input 
+                    id="modalTarget"
+                    type="number"
+                    value={targetInput}
+                    onChange={(e) => setTargetInput(e.target.value)}
+                    placeholder="Masukkan angka..."
+                    className="h-9 text-xs font-bold border-slate-200"
+                  />
+                  <Button 
+                    onClick={handleSaveTarget}
+                    className="h-9 px-3 text-[10px] font-black uppercase shrink-0"
+                  >
+                    Simpan
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </section>
+
           {/* LAPORAN MODAL */}
           <section>
             <h3 className="text-xs font-black text-muted-foreground uppercase tracking-widest mb-3 flex items-center gap-2">
