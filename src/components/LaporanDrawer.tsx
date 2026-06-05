@@ -28,8 +28,11 @@ interface LaporanDrawerProps {
 export function LaporanDrawer({ products, warungId }: LaporanDrawerProps) {
   const database = useDatabase();
   const { toast } = useToast();
+  
+  // Baca pengaturan dan riwayat spesifik per toko
   const { data: settingsData } = useDoc(database, `warungs/${warungId}/settings`);
   const { data: historyData = [] } = useCollection(database, `warungs/${warungId}/modalChecks`);
+  
   const [targetInput, setTargetInput] = useState<string>('');
   const [isBackupUnlocked, setIsBackupUnlocked] = useState(false);
   
@@ -42,7 +45,9 @@ export function LaporanDrawer({ products, warungId }: LaporanDrawerProps) {
   }, [modalTarget]);
 
   const sortedHistory = useMemo(() => {
-    return [...historyData].sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0)).slice(0, 5);
+    return [...historyData]
+      .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0))
+      .slice(0, 5);
   }, [historyData]);
 
   const checkBackupPin = () => {
@@ -112,11 +117,10 @@ export function LaporanDrawer({ products, warungId }: LaporanDrawerProps) {
   const totalModalBiasa = products.filter(p => p.kategori !== 'Titipan').reduce((acc, p) => acc + (p.modal * p.stok), 0);
   const totalNilaiTitipanTerjual = products.filter(p => p.kategori === 'Titipan').reduce((acc, p) => acc + (Math.max(0, (p.stokAwalTitipan || 0) - p.stok) * p.modal), 0);
   const totalModalAkhir = totalModalBiasa - totalNilaiTitipanTerjual;
-  const totalNilaiJual = products.reduce((acc, p) => acc + (p.hargaJual * p.stok), 0);
   const totalStok = products.reduce((acc, p) => acc + p.stok, 0);
 
   const selisih = totalModalAkhir - modalTarget;
-  let status = 'Aman', statusColor = 'text-blue-600', StatusIcon = CheckCircle2;
+  let status = 'Aman', statusColor = 'text-blue-600';
   if (selisih > 0) { status = 'Surplus'; statusColor = 'text-emerald-600'; }
   else if (selisih < 0) { status = 'Kurang'; statusColor = 'text-destructive'; }
 
@@ -159,6 +163,7 @@ export function LaporanDrawer({ products, warungId }: LaporanDrawerProps) {
                 <div className={`px-3 py-1 rounded-full bg-white border border-slate-100 shadow-sm text-xs font-black uppercase ${statusColor}`}>{status}</div>
               </div>
               <Button onClick={handleSaveHistory} className="w-full h-10 text-[10px] font-black uppercase" variant="outline"><History className="h-3.5 w-3.5 mr-2" /> Simpan Riwayat</Button>
+              
               <div className="pt-4 space-y-2">
                 <Label className="text-[10px] font-black text-slate-400 uppercase">Update Target</Label>
                 <div className="flex gap-2">
@@ -166,6 +171,47 @@ export function LaporanDrawer({ products, warungId }: LaporanDrawerProps) {
                   <Button onClick={handleSaveTarget} className="h-9 px-3 text-[10px] font-black uppercase">Simpan</Button>
                 </div>
               </div>
+
+              {/* LIST RIWAYAT (BAGIAN YANG DIPERBAIKI) */}
+              {sortedHistory.length > 0 && (
+                <div className="mt-6 space-y-3 border-t border-slate-200 pt-6">
+                  <h4 className="text-[9px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
+                    <Clock className="h-2.5 w-2.5" /> 5 Riwayat Terakhir
+                  </h4>
+                  <div className="space-y-2">
+                    {sortedHistory.map((item: any) => (
+                      <div key={item.id} className="bg-white p-2.5 rounded-lg border border-slate-100 shadow-sm relative group">
+                        <div className="flex justify-between items-start mb-1">
+                          <span className="text-[9px] font-bold text-slate-400">{formatDate(item.tanggal)}</span>
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="h-5 w-5 text-slate-300 hover:text-destructive absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                            onClick={() => handleDeleteHistory(item.id)}
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </Button>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <div className="flex flex-col">
+                            <span className="text-[10px] font-black text-slate-700">{formatCurrency(item.modalSaatIni)}</span>
+                            <span className={`text-[9px] font-bold ${item.selisih >= 0 ? 'text-emerald-600' : 'text-destructive'}`}>
+                              {item.selisih >= 0 ? '+' : ''}{formatCurrency(item.selisih)}
+                            </span>
+                          </div>
+                          <div className={`px-2 py-0.5 rounded-full border text-[8px] font-black uppercase ${
+                            item.status === 'Surplus' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 
+                            item.status === 'Kurang' ? 'bg-red-50 text-destructive border-red-100' : 
+                            'bg-blue-50 text-blue-600 border-blue-100'
+                          }`}>
+                            {item.status}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           </section>
 
