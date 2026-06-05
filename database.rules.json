@@ -1,16 +1,13 @@
 
 {
   "rules": {
-    ".read": "auth != null",
-    ".write": "auth != null",
     "products": {
-      ".indexOn": ["createdAt"]
+      ".read": "auth != null",
+      ".write": "auth != null"
     },
     "settings": {
-      "modalTarget": {
-        ".read": "auth != null",
-        ".write": "auth != null"
-      }
+      ".read": "auth != null",
+      ".write": "auth != null"
     }
   }
 }
