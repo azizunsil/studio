@@ -2,7 +2,7 @@
 "use client"
 
 import React, { useState, useMemo, useEffect } from 'react';
-import { Search, Plus, Edit2, Package, Store, MoreVertical, Loader2, AlertCircle, Clock, ArrowUpDown, LogOut, Lock } from 'lucide-react';
+import { Search, Plus, Edit2, Package, Store, MoreVertical, Loader2, AlertCircle, Clock, ArrowUpDown, LogOut, Lock, Building2 } from 'lucide-react';
 import { Product, Warung } from '@/lib/types';
 import { WARUNG_LIST } from '@/lib/constants';
 import { Input } from '@/components/ui/input';
@@ -36,7 +36,7 @@ export default function Home() {
   const [isQuickStockOpen, setIsQuickStockOpen] = useState(false);
   const [newStokInput, setNewStokInput] = useState('');
 
-  // State Akses Warung
+  // State Akses Warung/Toko
   const [activeWarung, setActiveWarung] = useState<Warung | null>(null);
   const [showPinDialog, setShowPinDialog] = useState(false);
   const [tempWarung, setTempWarung] = useState<Warung | null>(null);
@@ -52,7 +52,14 @@ export default function Home() {
   useEffect(() => {
     const saved = localStorage.getItem('selectedWarung');
     if (saved) {
-      setActiveWarung(JSON.parse(saved));
+      const parsed = JSON.parse(saved);
+      // Validasi apakah toko masih ada di daftar terbaru
+      const exists = WARUNG_LIST.find(w => w.id === parsed.id);
+      if (exists) {
+        setActiveWarung(parsed);
+      } else {
+        localStorage.removeItem('selectedWarung');
+      }
     }
     setIsHydrated(true);
   }, []);
@@ -94,10 +101,13 @@ export default function Home() {
     return result;
   }, [rawProducts, search, selectedCategory, sortBy]);
 
-  const handleSelectWarung = (warung: Warung) => {
-    setTempWarung(warung);
-    setPinInput('');
-    setShowPinDialog(true);
+  const handleSelectWarung = (warungId: string) => {
+    const warung = WARUNG_LIST.find(w => w.id === warungId);
+    if (warung) {
+      setTempWarung(warung);
+      setPinInput('');
+      setShowPinDialog(true);
+    }
   };
 
   const handleVerifyPin = () => {
@@ -114,7 +124,7 @@ export default function Home() {
   };
 
   const handleGantiWarung = () => {
-    if (confirm('Keluar dari warung ini?')) {
+    if (confirm('Keluar dari toko ini?')) {
       setActiveWarung(null);
       localStorage.removeItem('selectedWarung');
     }
@@ -161,28 +171,36 @@ export default function Home() {
 
   if (!isHydrated) return null;
 
-  // LAYAR PILIH WARUNG (GATEKEEPER)
+  // LAYAR PILIH TOKO (GATEKEEPER)
   if (!activeWarung) {
     return (
       <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6 text-center">
         <div className="bg-primary p-4 rounded-3xl shadow-xl shadow-primary/20 mb-8">
-          <Store className="h-12 w-12 text-white" />
+          <Building2 className="h-12 w-12 text-white" />
         </div>
-        <h1 className="text-2xl font-black text-slate-800 mb-2">PILIH WARUNG</h1>
-        <p className="text-slate-500 text-sm mb-8 font-medium">Pilih data warung yang ingin Anda kelola.</p>
+        <h1 className="text-2xl font-black text-slate-800 mb-2 uppercase tracking-tight">PILIH TOKO</h1>
+        <p className="text-slate-500 text-sm mb-8 font-medium">Pilih cabang toko yang ingin Anda kelola.</p>
         
-        <div className="grid gap-4 w-full max-w-xs">
-          {WARUNG_LIST.map((warung) => (
-            <Button 
-              key={warung.id} 
-              variant="outline" 
-              className="h-16 text-lg font-bold border-2 border-white bg-white hover:border-primary/50 shadow-sm rounded-2xl gap-3"
-              onClick={() => handleSelectWarung(warung)}
-            >
-              <Store className="h-5 w-5 text-primary" />
-              {warung.name}
-            </Button>
-          ))}
+        <div className="w-full max-w-xs space-y-4">
+          <div className="space-y-2 text-left">
+            <Label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">Daftar Toko Aktif</Label>
+            <Select onValueChange={handleSelectWarung}>
+              <SelectTrigger className="h-14 text-base font-bold border-2 border-white bg-white shadow-sm rounded-2xl focus:ring-primary">
+                <SelectValue placeholder="-- Klik untuk pilih toko --" />
+              </SelectTrigger>
+              <SelectContent className="rounded-2xl border-none shadow-xl">
+                {WARUNG_LIST.map((warung) => (
+                  <SelectItem 
+                    key={warung.id} 
+                    value={warung.id}
+                    className="h-12 text-sm font-bold rounded-xl focus:bg-slate-50"
+                  >
+                    {warung.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </div>
 
         <Dialog open={showPinDialog} onOpenChange={setShowPinDialog}>
@@ -208,7 +226,7 @@ export default function Home() {
                 />
               </div>
               <Button onClick={handleVerifyPin} className="w-full h-14 text-base font-black rounded-2xl shadow-lg shadow-primary/20">
-                BUKA DATA WARUNG
+                BUKA DATA TOKO
               </Button>
             </div>
           </DialogContent>
@@ -241,7 +259,7 @@ export default function Home() {
             onClick={handleGantiWarung}
             className="text-[10px] font-black text-slate-400 uppercase gap-1.5 px-2 h-8 rounded-full hover:bg-slate-50"
           >
-            <LogOut className="h-3 w-3" /> Ganti Warung
+            <LogOut className="h-3 w-3" /> Ganti Toko
           </Button>
         </div>
         
