@@ -1,4 +1,3 @@
-
 "use client"
 
 import React, { useState, useEffect, useMemo } from 'react';
@@ -102,11 +101,18 @@ export function LaporanDrawer({ products }: LaporanDrawerProps) {
 
   const handleAdminLogin = async () => {
     const provider = new GoogleAuthProvider();
+    // Gunakan custom parameter agar browser tidak memblokir redirect
+    provider.setCustomParameters({ prompt: 'select_account' });
+    
     try {
-      // Menggunakan Redirect sebagai pengganti Popup untuk stabilitas lebih baik
+      // Menggunakan Redirect sebagai pengganti Popup untuk stabilitas lebih baik di HP/PWA
       await signInWithRedirect(auth, provider);
     } catch (error: any) {
-      toast({ variant: "destructive", title: "Login Gagal", description: error.message });
+      toast({ 
+        variant: "destructive", 
+        title: "Login Gagal", 
+        description: error.message 
+      });
     }
   };
 

@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -17,11 +16,21 @@ export function useUser(auth: Auth) {
     let isMounted = true;
 
     // Menangani hasil dari signInWithRedirect jika user baru saja kembali dari login Google
-    getRedirectResult(auth).catch((error) => {
-      if (isMounted) {
-        console.error("Redirect Login Error:", error);
-      }
-    });
+    // Ini dieksekusi setiap kali aplikasi dimuat ulang
+    getRedirectResult(auth)
+      .then((result) => {
+        if (isMounted && result?.user) {
+          setUser(result.user);
+        }
+      })
+      .catch((error) => {
+        if (isMounted) {
+          // Hanya log error jika bukan error "no redirect in progress"
+          if (error.code !== 'auth/no-auth-event') {
+            console.error("Redirect Login Error:", error);
+          }
+        }
+      });
 
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       if (!isMounted) return;
@@ -30,7 +39,7 @@ export function useUser(auth: Auth) {
         setUser(currentUser);
         setLoading(false);
       } else {
-        // Jika tidak ada user, lakukan sign-in anonim agar aplikasi tetap bisa digunakan
+        // Jika tidak ada user sama sekali, lakukan sign-in anonim agar aplikasi tetap bisa digunakan
         try {
           await signInAnonymously(auth);
         } catch (error) {
