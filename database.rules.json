@@ -5,6 +5,12 @@
     ".write": "auth != null",
     "products": {
       ".indexOn": ["createdAt"]
+    },
+    "settings": {
+      "modalTarget": {
+        ".read": "auth != null",
+        ".write": "auth != null"
+      }
     }
   }
 }
