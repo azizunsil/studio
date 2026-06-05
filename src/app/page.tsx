@@ -1,3 +1,4 @@
+
 "use client"
 
 import React, { useState, useMemo } from 'react';
@@ -6,16 +7,18 @@ import { Product } from '@/lib/types';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Dialog, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Sheet, SheetTrigger, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { ProductForm } from '@/components/ProductForm';
 import { LaporanDrawer } from '@/components/LaporanDrawer';
 import { useCollection, useDatabase, useAuth, useUser } from '@/firebase';
-import { ref, remove } from 'firebase/database';
+import { ref, remove, update } from 'firebase/database';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Label } from '@/components/ui/label';
+import { useToast } from '@/hooks/use-toast';
 import { format, isToday } from 'date-fns';
 import { id } from 'date-fns/locale';
 
@@ -27,6 +30,12 @@ export default function Home() {
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
   
+  // State untuk Quick Stock Edit
+  const [quickStockProduct, setQuickStockProduct] = useState<Product | null>(null);
+  const [isQuickStockOpen, setIsQuickStockOpen] = useState(false);
+  const [newStokInput, setNewStokInput] = useState('');
+
+  const { toast } = useToast();
   const database = useDatabase();
   const auth = useAuth();
   const { user, loading: authLoading } = useUser(auth);
@@ -36,7 +45,6 @@ export default function Home() {
   const categories = ['Semua', 'Rokok', 'Sembako', 'Minuman', 'Sachet', 'Titipan', 'Lainnya'];
 
   const filteredAndSortedProducts = useMemo(() => {
-    // 1. Filter berdasarkan pencarian dan kategori
     let result = rawProducts.filter(p => {
       const nama = p.namaBarang || '';
       const matchSearch = nama.toLowerCase().includes(search.toLowerCase());
@@ -44,7 +52,6 @@ export default function Home() {
       return matchSearch && matchCat;
     });
 
-    // 2. Sort berdasarkan pilihan user
     switch (sortBy) {
       case 'A-Z':
         result.sort((a, b) => (a.namaBarang || '').localeCompare(b.namaBarang || ''));
@@ -77,6 +84,37 @@ export default function Home() {
         console.error("Delete Error:", err);
       });
     }
+  };
+
+  const handleQuickUpdateStock = () => {
+    if (!database || !quickStockProduct) return;
+    const stokNum = parseInt(newStokInput);
+    if (isNaN(stokNum) || stokNum < 0) {
+      toast({
+        variant: "destructive",
+        title: "Input Tidak Valid",
+        description: "Stok harus berupa angka positif."
+      });
+      return;
+    }
+
+    const itemRef = ref(database, `products/${quickStockProduct.id}`);
+    update(itemRef, {
+      stok: stokNum,
+      lastStockUpdateAt: Date.now()
+    }).then(() => {
+      toast({
+        title: "Stok Diperbarui",
+        description: `Stok ${quickStockProduct.namaBarang} sekarang ${stokNum}.`
+      });
+      setIsQuickStockOpen(false);
+    }).catch(err => {
+      toast({
+        variant: "destructive",
+        title: "Gagal Update",
+        description: err.message
+      });
+    });
   };
 
   const formatCurrency = (val: number) => {
@@ -211,9 +249,19 @@ export default function Home() {
                             {formatCurrency(product.modal)}
                           </p>
                         </div>
-                        <div>
-                          <p className="text-[10px] text-slate-400 font-bold uppercase">Stok</p>
-                          <p className="text-sm font-bold text-slate-800">
+                        <div 
+                          className="cursor-pointer group/stok"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setQuickStockProduct(product);
+                            setNewStokInput(product.stok.toString());
+                            setIsQuickStockOpen(true);
+                          }}
+                        >
+                          <p className="text-[10px] text-slate-400 font-bold uppercase flex items-center gap-1 group-hover/stok:text-primary transition-colors">
+                            Stok <Edit2 className="h-2 w-2 opacity-40" />
+                          </p>
+                          <p className="text-sm font-bold text-slate-800 border-b border-dashed border-slate-200 group-hover/stok:border-primary/50 transition-colors inline-block">
                             <span className={product.stok < 5 ? 'text-destructive font-black' : ''}>{product.stok}</span>
                             {product.kategori === 'Titipan' && product.stokAwalTitipan && (
                               <span className="text-[10px] text-slate-400 ml-1 font-medium">(dari {product.stokAwalTitipan})</span>
@@ -280,6 +328,7 @@ export default function Home() {
         )}
       </div>
 
+      {/* FAB - Tambah Barang */}
       <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
         <DialogTrigger asChild>
           <Button 
@@ -291,6 +340,7 @@ export default function Home() {
         <ProductForm onSuccess={() => setIsAddOpen(false)} />
       </Dialog>
 
+      {/* Dialog Edit Barang Lengkap */}
       <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
         {editingProduct && (
           <ProductForm 
@@ -301,6 +351,41 @@ export default function Home() {
             }} 
           />
         )}
+      </Dialog>
+
+      {/* Dialog Quick Stock Edit */}
+      <Dialog open={isQuickStockOpen} onOpenChange={setIsQuickStockOpen}>
+        <DialogContent className="sm:max-w-[350px] rounded-t-3xl sm:rounded-2xl">
+          <DialogHeader>
+            <DialogTitle className="text-lg font-black text-slate-800">Edit Stok Cepat</DialogTitle>
+          </DialogHeader>
+          <div className="py-4 space-y-4">
+            <div className="bg-slate-50 p-3 rounded-lg border border-slate-100">
+              <p className="text-[10px] text-slate-400 font-bold uppercase">Nama Barang</p>
+              <p className="text-sm font-bold text-slate-700">{quickStockProduct?.namaBarang}</p>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="quickStok" className="text-xs font-bold text-slate-600">Stok Baru</Label>
+              <Input 
+                id="quickStok"
+                type="number"
+                value={newStokInput}
+                onChange={(e) => setNewStokInput(e.target.value)}
+                className="h-12 text-lg font-black border-slate-200 focus:ring-primary"
+                autoFocus
+                onFocus={(e) => e.target.select()}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button 
+              onClick={handleQuickUpdateStock}
+              className="w-full h-12 font-black shadow-lg shadow-primary/20"
+            >
+              SIMPAN STOK
+            </Button>
+          </DialogFooter>
+        </DialogContent>
       </Dialog>
     </div>
   );
