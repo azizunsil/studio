@@ -1,4 +1,3 @@
-
 "use client"
 
 import React from 'react';
@@ -57,7 +56,6 @@ export function LaporanDrawer({ products }: LaporanDrawerProps) {
 
   const totalNilaiJual = products.reduce((acc, p) => acc + (p.hargaJual * p.stok), 0);
   const totalStok = products.reduce((acc, p) => acc + p.stok, 0);
-  const labaKotor = totalNilaiJual - totalModalAkhir;
 
   return (
     <SheetContent side="left" className="w-[85%] sm:w-[350px] p-0 border-r-0">
@@ -133,11 +131,6 @@ export function LaporanDrawer({ products }: LaporanDrawerProps) {
               <div className="flex justify-between text-sm">
                 <span className="text-slate-500">Total Nilai Jual</span>
                 <span className="font-bold">{formatCurrency(totalNilaiJual)}</span>
-              </div>
-              <Separator className="my-2" />
-              <div className="flex justify-between font-black text-green-600 text-base">
-                <span>Sisa Potensi Laba</span>
-                <span>{formatCurrency(labaKotor)}</span>
               </div>
             </div>
           </section>
