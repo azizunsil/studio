@@ -16,10 +16,15 @@ export const WARUNG_LIST: Warung[] = [
     name: "Toko Sinday",
     pin: "2222", // PIN Toko Sinday
   },
+  {
+    id: "toko_teji",
+    name: "Toko Teji",
+    pin: "2134", // PIN Toko Teji
+  },
 ];
 
 /**
  * PIN BACKUP GLOBAL
- * Digunakan untuk fitur: Ekspor CSV, Impor CSV, Backup JSON, Restore JSON.
+ * Digunakan untuk fitur: Ekspor PRODUK, Impor PRODUK, Backup JSON, Restore JSON.
  */
 export const BACKUP_PIN = "9999"; 
