@@ -10,9 +10,10 @@ import { Label } from '@/components/ui/label';
 import { Product, Category } from '@/lib/types';
 import { CsvActions } from '@/components/CsvActions';
 import { FullBackupActions } from '@/components/FullBackupActions';
-import { useDatabase, useDoc, useCollection } from '@/firebase';
+import { useDatabase, useDoc, useCollection, useAuth, useUser } from '@/firebase';
 import { ref, set, push, remove } from 'firebase/database';
-import { Wallet, Target, ArrowRightLeft, TrendingUp, TrendingDown, CheckCircle2, History, Trash2, Clock, FileText } from 'lucide-react';
+import { signInWithPopup, GoogleAuthProvider, signOut } from 'firebase/auth';
+import { Wallet, Target, ArrowRightLeft, TrendingUp, TrendingDown, CheckCircle2, History, Trash2, Clock, FileText, Lock, LogIn, LogOut, UserCheck } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { id } from 'date-fns/locale';
@@ -24,12 +25,15 @@ interface LaporanDrawerProps {
 
 export function LaporanDrawer({ products }: LaporanDrawerProps) {
   const database = useDatabase();
+  const auth = useAuth();
+  const { user } = useUser(auth);
   const { toast } = useToast();
   const { data: settingsData } = useDoc(database, 'settings');
   const { data: historyData = [] } = useCollection(database, 'modalChecks');
   const [targetInput, setTargetInput] = useState<string>('');
   
   const modalTarget = (settingsData as any)?.modalTarget ?? 0;
+  const isAdmin = user?.email === 'azizunsil@gmail.com';
 
   useEffect(() => {
     if (modalTarget !== undefined && modalTarget !== null) {
@@ -92,6 +96,25 @@ export function LaporanDrawer({ products }: LaporanDrawerProps) {
     if (confirm('Hapus catatan riwayat ini?')) {
       const itemRef = ref(database, `modalChecks/${id}`);
       remove(itemRef);
+    }
+  };
+
+  const handleAdminLogin = async () => {
+    const provider = new GoogleAuthProvider();
+    try {
+      await signInWithPopup(auth, provider);
+      toast({ title: "Login Berhasil", description: "Selamat datang di Panel Admin." });
+    } catch (error: any) {
+      toast({ variant: "destructive", title: "Login Gagal", description: error.message });
+    }
+  };
+
+  const handleLogout = async () => {
+    try {
+      await signOut(auth);
+      toast({ title: "Logout Berhasil", description: "Anda telah keluar dari Panel Admin." });
+    } catch (error: any) {
+      toast({ variant: "destructive", title: "Logout Gagal", description: error.message });
     }
   };
 
@@ -379,21 +402,63 @@ export function LaporanDrawer({ products }: LaporanDrawerProps) {
               </Button>
             </div>
 
-            <div>
-              <h3 className="text-xs font-black text-muted-foreground uppercase tracking-widest mb-3">Cadangan Data Produk</h3>
-              <div className="pt-1">
-                <CsvActions />
-              </div>
-            </div>
-            
-            <Separator className="opacity-50" />
+            {isAdmin && (
+              <>
+                <div>
+                  <h3 className="text-xs font-black text-muted-foreground uppercase tracking-widest mb-3">Cadangan Data Produk</h3>
+                  <div className="pt-1">
+                    <CsvActions />
+                  </div>
+                </div>
+                
+                <Separator className="opacity-50" />
 
-            <div>
-              <h3 className="text-xs font-black text-muted-foreground uppercase tracking-widest mb-3">Backup Lengkap (Semua Data)</h3>
-              <div className="pt-1">
-                <FullBackupActions />
+                <div>
+                  <h3 className="text-xs font-black text-muted-foreground uppercase tracking-widest mb-3">Backup Lengkap (Semua Data)</h3>
+                  <div className="pt-1">
+                    <FullBackupActions />
+                  </div>
+                </div>
+              </>
+            )}
+
+            {!isAdmin && (
+              <div className="bg-slate-100 p-4 rounded-xl border border-dashed border-slate-300">
+                <p className="text-[10px] font-bold text-slate-400 text-center uppercase flex items-center justify-center gap-2">
+                  <Lock className="h-3 w-3" /> Fitur Backup Terkunci
+                </p>
               </div>
-            </div>
+            )}
+          </section>
+
+          <Separator className="my-6 opacity-50" />
+          
+          <section className="pt-2">
+            {!user || user.isAnonymous ? (
+              <Button 
+                onClick={handleAdminLogin}
+                className="w-full h-10 gap-2 text-[10px] font-black uppercase bg-slate-800 hover:bg-slate-900 text-white shadow-lg shadow-slate-200"
+              >
+                <LogIn className="h-3.5 w-3.5" /> Login Admin (Google)
+              </Button>
+            ) : (
+              <div className="space-y-3">
+                <div className="flex items-center justify-center gap-2 bg-emerald-50 p-3 rounded-lg border border-emerald-100">
+                  <UserCheck className="h-4 w-4 text-emerald-600" />
+                  <div className="flex flex-col">
+                    <span className="text-[9px] font-black text-emerald-700 uppercase leading-none">Admin Aktif</span>
+                    <span className="text-[10px] font-bold text-emerald-600 truncate max-w-[150px]">{user.email}</span>
+                  </div>
+                </div>
+                <Button 
+                  onClick={handleLogout}
+                  variant="outline"
+                  className="w-full h-10 gap-2 text-[10px] font-black uppercase text-slate-500 border-slate-200"
+                >
+                  <LogOut className="h-3.5 w-3.5" /> Logout Admin
+                </Button>
+              </div>
+            )}
           </section>
         </div>
       </ScrollArea>
