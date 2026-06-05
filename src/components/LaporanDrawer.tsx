@@ -14,7 +14,7 @@ import { CsvActions } from '@/components/CsvActions';
 import { FullBackupActions } from '@/components/FullBackupActions';
 import { useDatabase, useDoc, useCollection } from '@/firebase';
 import { ref, set, push, remove } from 'firebase/database';
-import { Wallet, CheckCircle2, History, Trash2, Clock, FileText, Lock } from 'lucide-react';
+import { Wallet, CheckCircle2, History, Trash2, Clock, FileText, Lock, TrendingUp, TrendingDown } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { id } from 'date-fns/locale';
@@ -107,22 +107,35 @@ export function LaporanDrawer({ products, warungId }: LaporanDrawerProps) {
   const getStatsByCategory = (cat: Category) => {
     const filtered = products.filter(p => p.kategori === cat);
     const stok = filtered.reduce((acc, p) => acc + p.stok, 0);
+    const count = filtered.length;
+
     if (cat === 'Titipan') {
-      const totalTerjual = filtered.reduce((acc, p) => acc + (Math.max(0, (p.stokAwalTitipan || 0) - p.stok) * p.modal), 0);
-      return { modal: 0, stok, count: filtered.length, titipanTerjual: totalTerjual };
+      const totalNilaiTerjual = filtered.reduce((acc, p) => {
+        const stokAwal = p.stokAwalTitipan || 0;
+        const terjual = Math.max(0, stokAwal - p.stok);
+        return acc + (terjual * p.modal);
+      }, 0);
+      return { modal: 0, stok, count, titipanTerjual: totalNilaiTerjual };
     }
-    return { modal: filtered.reduce((acc, p) => acc + (p.modal * p.stok), 0), stok, count: filtered.length };
+
+    const modal = filtered.reduce((acc, p) => acc + (p.modal * p.stok), 0);
+    return { modal, stok, count };
   };
 
   const totalModalBiasa = products.filter(p => p.kategori !== 'Titipan').reduce((acc, p) => acc + (p.modal * p.stok), 0);
-  const totalNilaiTitipanTerjual = products.filter(p => p.kategori === 'Titipan').reduce((acc, p) => acc + (Math.max(0, (p.stokAwalTitipan || 0) - p.stok) * p.modal), 0);
+  const totalNilaiTitipanTerjual = products.filter(p => p.kategori === 'Titipan').reduce((acc, p) => {
+    const terjual = Math.max(0, (p.stokAwalTitipan || 0) - p.stok);
+    return acc + (terjual * p.modal);
+  }, 0);
+  
   const totalModalAkhir = totalModalBiasa - totalNilaiTitipanTerjual;
+  const totalNilaiJual = products.reduce((acc, p) => acc + (p.hargaJual * p.stok), 0);
   const totalStok = products.reduce((acc, p) => acc + p.stok, 0);
 
   const selisih = totalModalAkhir - modalTarget;
-  let status = 'Aman', statusColor = 'text-blue-600';
-  if (selisih > 0) { status = 'Surplus'; statusColor = 'text-emerald-600'; }
-  else if (selisih < 0) { status = 'Kurang'; statusColor = 'text-destructive'; }
+  let status = 'Aman', statusColor = 'text-blue-600', StatusIcon = CheckCircle2;
+  if (selisih > 0) { status = 'Surplus'; statusColor = 'text-emerald-600'; StatusIcon = TrendingUp; }
+  else if (selisih < 0) { status = 'Kurang'; statusColor = 'text-destructive'; StatusIcon = TrendingDown; }
 
   return (
     <SheetContent side="left" className="w-[85%] sm:w-[350px] p-0 border-r-0">
@@ -133,6 +146,7 @@ export function LaporanDrawer({ products, warungId }: LaporanDrawerProps) {
       
       <ScrollArea className="h-[calc(100vh-80px)] px-6 py-4">
         <div className="space-y-6 pb-20">
+          {/* 1. INFORMASI STOK */}
           <section>
             <h3 className="text-xs font-black text-muted-foreground uppercase tracking-widest mb-3 flex items-center gap-2">
               <div className="w-1.5 h-1.5 rounded-full bg-slate-400"></div> Informasi Stok
@@ -145,6 +159,10 @@ export function LaporanDrawer({ products, warungId }: LaporanDrawerProps) {
                 </div>
               ))}
               <Separator className="my-2" />
+              <div className="flex justify-between text-sm font-bold text-slate-600">
+                <span>Total Jenis Produk</span>
+                <span>{products.length}</span>
+              </div>
               <div className="flex justify-between font-black text-slate-800">
                 <span>Total Stok Gudang</span>
                 <span>{totalStok} item</span>
@@ -152,27 +170,79 @@ export function LaporanDrawer({ products, warungId }: LaporanDrawerProps) {
             </div>
           </section>
 
-          <section className="bg-slate-50 p-4 rounded-xl border border-slate-200">
+          {/* 2. RINCIAN MODAL STOK */}
+          <section>
+            <h3 className="text-xs font-black text-muted-foreground uppercase tracking-widest mb-3 flex items-center gap-2">
+              <div className="w-1.5 h-1.5 rounded-full bg-primary"></div> Rincian Modal Stok
+            </h3>
+            <div className="space-y-2">
+              {categories.filter(c => c !== 'Titipan').map(cat => (
+                <div key={cat} className="flex justify-between text-sm">
+                  <span className="text-slate-500 font-medium">{cat}</span>
+                  <span className="font-bold text-slate-700">{formatCurrency(getStatsByCategory(cat).modal)}</span>
+                </div>
+              ))}
+              <div className="flex justify-between text-sm pt-2">
+                <span className="text-blue-600 font-bold italic">Titipan Terjual (-)</span>
+                <span className="font-bold text-destructive">-{formatCurrency(totalNilaiTitipanTerjual)}</span>
+              </div>
+              <Separator className="my-2" />
+              <div className="flex justify-between font-black text-primary text-base">
+                <span>Total Modal Net</span>
+                <span>{formatCurrency(totalModalAkhir)}</span>
+              </div>
+            </div>
+          </section>
+
+          {/* 3. NILAI INVENTARIS */}
+          <section className="bg-slate-50 p-4 rounded-xl border border-slate-100">
+            <h3 className="text-xs font-black text-muted-foreground uppercase tracking-widest mb-3">Nilai Inventaris</h3>
+            <div className="space-y-2">
+              <div className="flex justify-between text-sm">
+                <span className="text-slate-500">Total Modal</span>
+                <span className="font-bold">{formatCurrency(totalModalAkhir)}</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-slate-500">Total Nilai Jual</span>
+                <span className="font-bold">{formatCurrency(totalNilaiJual)}</span>
+              </div>
+            </div>
+          </section>
+
+          {/* 4. CEK MODAL TOKO */}
+          <section className="bg-slate-50 p-4 rounded-xl border border-slate-200 shadow-inner">
             <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-4 flex items-center gap-2"><Wallet className="h-3 w-3" /> Cek Modal Toko</h3>
             <div className="space-y-3">
-              <div className="flex justify-between items-center"><span className="text-xs text-slate-500 font-bold uppercase">Target Modal</span><span className="font-black text-slate-700">{formatCurrency(modalTarget)}</span></div>
-              <div className="flex justify-between items-center"><span className="text-xs text-slate-500 font-bold uppercase">Modal Saat Ini</span><span className="font-black text-primary">{formatCurrency(totalModalAkhir)}</span></div>
-              <Separator />
               <div className="flex justify-between items-center">
-                <div className="flex flex-col"><span className="text-[10px] text-slate-400 font-black uppercase">Selisih</span><span className={`text-sm font-black ${statusColor}`}>{selisih >= 0 ? '+' : ''}{formatCurrency(selisih)}</span></div>
-                <div className={`px-3 py-1 rounded-full bg-white border border-slate-100 shadow-sm text-xs font-black uppercase ${statusColor}`}>{status}</div>
+                <span className="text-xs text-slate-500 font-bold uppercase">Target Modal</span>
+                <span className="font-black text-slate-700">{formatCurrency(modalTarget)}</span>
               </div>
-              <Button onClick={handleSaveHistory} className="w-full h-10 text-[10px] font-black uppercase" variant="outline"><History className="h-3.5 w-3.5 mr-2" /> Simpan Riwayat</Button>
+              <div className="flex justify-between items-center">
+                <span className="text-xs text-slate-500 font-bold uppercase">Modal Saat Ini</span>
+                <span className="font-black text-primary">{formatCurrency(totalModalAkhir)}</span>
+              </div>
+              <Separator className="bg-slate-200" />
+              <div className="flex justify-between items-center">
+                <div className="flex flex-col">
+                  <span className="text-[10px] text-slate-400 font-black uppercase">Selisih</span>
+                  <span className={`text-sm font-black ${statusColor}`}>{selisih >= 0 ? '+' : ''}{formatCurrency(selisih)}</span>
+                </div>
+                <div className={`flex items-center gap-1.5 px-3 py-1 rounded-full bg-white border border-slate-100 shadow-sm ${statusColor}`}>
+                  <StatusIcon className="h-3.5 w-3.5" />
+                  <span className="text-xs font-black uppercase tracking-tight">{status}</span>
+                </div>
+              </div>
+              <Button onClick={handleSaveHistory} className="w-full h-10 text-[10px] font-black uppercase bg-white text-primary border border-primary/20" variant="outline"><History className="h-3.5 w-3.5 mr-2" /> Simpan Riwayat</Button>
               
               <div className="pt-4 space-y-2">
                 <Label className="text-[10px] font-black text-slate-400 uppercase">Update Target</Label>
                 <div className="flex gap-2">
-                  <Input type="number" value={targetInput} onChange={(e) => setTargetInput(e.target.value)} className="h-9 text-xs font-bold" />
+                  <Input type="number" value={targetInput} onChange={(e) => setTargetInput(e.target.value)} className="h-9 text-xs font-bold bg-white" />
                   <Button onClick={handleSaveTarget} className="h-9 px-3 text-[10px] font-black uppercase">Simpan</Button>
                 </div>
               </div>
 
-              {/* LIST RIWAYAT (BAGIAN YANG DIPERBAIKI) */}
+              {/* LIST RIWAYAT */}
               {sortedHistory.length > 0 && (
                 <div className="mt-6 space-y-3 border-t border-slate-200 pt-6">
                   <h4 className="text-[9px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
@@ -183,29 +253,19 @@ export function LaporanDrawer({ products, warungId }: LaporanDrawerProps) {
                       <div key={item.id} className="bg-white p-2.5 rounded-lg border border-slate-100 shadow-sm relative group">
                         <div className="flex justify-between items-start mb-1">
                           <span className="text-[9px] font-bold text-slate-400">{formatDate(item.tanggal)}</span>
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            className="h-5 w-5 text-slate-300 hover:text-destructive absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity"
-                            onClick={() => handleDeleteHistory(item.id)}
-                          >
+                          <Button variant="ghost" size="icon" className="h-5 w-5 text-slate-300 hover:text-destructive absolute top-1 right-1 opacity-0 group-hover:opacity-100" onClick={() => handleDeleteHistory(item.id)}>
                             <Trash2 className="h-3 w-3" />
                           </Button>
                         </div>
                         <div className="flex justify-between items-center">
                           <div className="flex flex-col">
                             <span className="text-[10px] font-black text-slate-700">{formatCurrency(item.modalSaatIni)}</span>
-                            <span className={`text-[9px] font-bold ${item.selisih >= 0 ? 'text-emerald-600' : 'text-destructive'}`}>
-                              {item.selisih >= 0 ? '+' : ''}{formatCurrency(item.selisih)}
-                            </span>
+                            <span className={`text-[9px] font-bold ${item.selisih >= 0 ? 'text-emerald-600' : 'text-destructive'}`}>{item.selisih >= 0 ? '+' : ''}{formatCurrency(item.selisih)}</span>
                           </div>
                           <div className={`px-2 py-0.5 rounded-full border text-[8px] font-black uppercase ${
                             item.status === 'Surplus' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 
-                            item.status === 'Kurang' ? 'bg-red-50 text-destructive border-red-100' : 
-                            'bg-blue-50 text-blue-600 border-blue-100'
-                          }`}>
-                            {item.status}
-                          </div>
+                            item.status === 'Kurang' ? 'bg-red-50 text-destructive border-red-100' : 'bg-blue-50 text-blue-600 border-blue-100'
+                          }`}>{item.status}</div>
                         </div>
                       </div>
                     ))}
@@ -215,10 +275,11 @@ export function LaporanDrawer({ products, warungId }: LaporanDrawerProps) {
             </div>
           </section>
 
+          {/* 5. EKSPOR & BACKUP */}
           <section className="space-y-6">
             <div className="bg-blue-50/50 p-4 rounded-xl border border-blue-100">
               <h3 className="text-xs font-black text-blue-600 uppercase mb-3 flex items-center gap-2"><FileText className="h-3.5 w-3.5" /> Ekspor Dokumen</h3>
-              <Button onClick={() => exportLaporanModalPdf({ products, modalTarget, totalModalAkhir, totalModalBiasa, totalNilaiTitipanTerjual, selisih, status, modalHistory: historyData })} className="w-full h-11 text-[11px] font-black uppercase" variant="outline"><FileText className="h-4 w-4 mr-2" /> Export PDF</Button>
+              <Button onClick={() => exportLaporanModalPdf({ products, modalTarget, totalModalAkhir, totalModalBiasa, totalNilaiTitipanTerjual, selisih, status, modalHistory: historyData })} className="w-full h-11 text-[11px] font-black uppercase bg-white text-blue-600 border-blue-200" variant="outline"><FileText className="h-4 w-4 mr-2" /> Export PDF</Button>
             </div>
 
             <div className="border-2 border-dashed border-slate-100 p-4 rounded-xl">
