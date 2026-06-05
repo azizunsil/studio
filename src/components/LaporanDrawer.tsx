@@ -1,4 +1,3 @@
-
 "use client"
 
 import React, { useState, useEffect, useMemo } from 'react';
@@ -10,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Product, Category } from '@/lib/types';
 import { CsvActions } from '@/components/CsvActions';
+import { FullBackupActions } from '@/components/FullBackupActions';
 import { useDatabase, useDoc, useCollection } from '@/firebase';
 import { ref, set, push, remove } from 'firebase/database';
 import { Wallet, Target, ArrowRightLeft, TrendingUp, TrendingDown, CheckCircle2, History, Trash2, Clock } from 'lucide-react';
@@ -338,10 +338,21 @@ export function LaporanDrawer({ products }: LaporanDrawerProps) {
             )}
           </section>
 
-          <section>
-            <h3 className="text-xs font-black text-muted-foreground uppercase tracking-widest mb-3">Cadangan Data Produk</h3>
-            <div className="pt-2">
-              <CsvActions />
+          <section className="space-y-4">
+            <div>
+              <h3 className="text-xs font-black text-muted-foreground uppercase tracking-widest mb-3">Cadangan Data Produk</h3>
+              <div className="pt-1">
+                <CsvActions />
+              </div>
+            </div>
+            
+            <Separator className="opacity-50" />
+
+            <div>
+              <h3 className="text-xs font-black text-muted-foreground uppercase tracking-widest mb-3">Backup Lengkap (Semua Data)</h3>
+              <div className="pt-1">
+                <FullBackupActions />
+              </div>
             </div>
           </section>
         </div>
