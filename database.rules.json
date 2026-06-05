@@ -7,7 +7,6 @@
         ".write": "auth != null"
       }
     },
-    // Menjaga kompatibilitas data lama jika masih ada
     "products": {
       ".read": "auth != null",
       ".write": "auth != null"
