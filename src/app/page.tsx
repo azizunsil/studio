@@ -1,9 +1,10 @@
 
 "use client"
 
-import React, { useState, useMemo } from 'react';
-import { Search, Plus, Edit2, Trash2, Package, Store, MoreVertical, Loader2, AlertCircle, Clock, ArrowUpDown } from 'lucide-react';
-import { Product } from '@/lib/types';
+import React, { useState, useMemo, useEffect } from 'react';
+import { Search, Plus, Edit2, Package, Store, MoreVertical, Loader2, AlertCircle, Clock, ArrowUpDown, LogOut, Lock } from 'lucide-react';
+import { Product, Warung } from '@/lib/types';
+import { WARUNG_LIST } from '@/lib/constants';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -35,12 +36,29 @@ export default function Home() {
   const [isQuickStockOpen, setIsQuickStockOpen] = useState(false);
   const [newStokInput, setNewStokInput] = useState('');
 
+  // State Akses Warung
+  const [activeWarung, setActiveWarung] = useState<Warung | null>(null);
+  const [showPinDialog, setShowPinDialog] = useState(false);
+  const [tempWarung, setTempWarung] = useState<Warung | null>(null);
+  const [pinInput, setPinInput] = useState('');
+  const [isHydrated, setIsHydrated] = useState(false);
+
   const { toast } = useToast();
   const database = useDatabase();
   const auth = useAuth();
   const { user, loading: authLoading } = useUser(auth);
 
-  const { data: rawProducts = [], loading: dataLoading, error: dbError } = useCollection<Product>(database, 'products');
+  // Load Warung dari LocalStorage saat startup
+  useEffect(() => {
+    const saved = localStorage.getItem('selectedWarung');
+    if (saved) {
+      setActiveWarung(JSON.parse(saved));
+    }
+    setIsHydrated(true);
+  }, []);
+
+  const warungPath = activeWarung ? `warungs/${activeWarung.id}/products` : '';
+  const { data: rawProducts = [], loading: dataLoading, error: dbError } = useCollection<Product>(database, warungPath);
 
   const categories = ['Semua', 'Rokok', 'Sembako', 'Minuman', 'Sachet', 'Titipan', 'Lainnya'];
 
@@ -76,10 +94,36 @@ export default function Home() {
     return result;
   }, [rawProducts, search, selectedCategory, sortBy]);
 
+  const handleSelectWarung = (warung: Warung) => {
+    setTempWarung(warung);
+    setPinInput('');
+    setShowPinDialog(true);
+  };
+
+  const handleVerifyPin = () => {
+    if (tempWarung && pinInput === tempWarung.pin) {
+      setActiveWarung(tempWarung);
+      localStorage.setItem('selectedWarung', JSON.stringify(tempWarung));
+      setShowPinDialog(false);
+      setTempWarung(null);
+      setPinInput('');
+      toast({ title: "Berhasil Masuk", description: `Selamat datang di ${tempWarung.name}` });
+    } else {
+      toast({ variant: "destructive", title: "PIN Salah", description: "Silakan masukkan PIN yang benar." });
+    }
+  };
+
+  const handleGantiWarung = () => {
+    if (confirm('Keluar dari warung ini?')) {
+      setActiveWarung(null);
+      localStorage.removeItem('selectedWarung');
+    }
+  };
+
   const handleDelete = (id: string) => {
-    if (!database) return;
+    if (!database || !activeWarung) return;
     if (confirm('Hapus barang ini?')) {
-      const itemRef = ref(database, `products/${id}`);
+      const itemRef = ref(database, `warungs/${activeWarung.id}/products/${id}`);
       remove(itemRef).catch((err) => {
         console.error("Delete Error:", err);
       });
@@ -87,42 +131,25 @@ export default function Home() {
   };
 
   const handleQuickUpdateStock = () => {
-    if (!database || !quickStockProduct) return;
+    if (!database || !quickStockProduct || !activeWarung) return;
     const stokNum = parseInt(newStokInput);
     if (isNaN(stokNum) || stokNum < 0) {
-      toast({
-        variant: "destructive",
-        title: "Input Tidak Valid",
-        description: "Stok harus berupa angka positif."
-      });
+      toast({ variant: "destructive", title: "Input Tidak Valid", description: "Stok harus berupa angka positif." });
       return;
     }
 
-    const itemRef = ref(database, `products/${quickStockProduct.id}`);
+    const itemRef = ref(database, `warungs/${activeWarung.id}/products/${quickStockProduct.id}`);
     update(itemRef, {
       stok: stokNum,
       lastStockUpdateAt: Date.now()
     }).then(() => {
-      toast({
-        title: "Stok Diperbarui",
-        description: `Stok ${quickStockProduct.namaBarang} sekarang ${stokNum}.`
-      });
+      toast({ title: "Stok Diperbarui", description: `Stok ${quickStockProduct.namaBarang} sekarang ${stokNum}.` });
       setIsQuickStockOpen(false);
-    }).catch(err => {
-      toast({
-        variant: "destructive",
-        title: "Gagal Update",
-        description: err.message
-      });
     });
   };
 
   const formatCurrency = (val: number) => {
-    return new Intl.NumberFormat('id-ID', {
-      style: 'currency',
-      currency: 'IDR',
-      minimumFractionDigits: 0,
-    }).format(val);
+    return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(val);
   };
 
   const formatDate = (timestamp?: number) => {
@@ -131,6 +158,64 @@ export default function Home() {
     if (isToday(date)) return 'Hari ini';
     return format(date, 'dd MMM yyyy', { locale: id });
   };
+
+  if (!isHydrated) return null;
+
+  // LAYAR PILIH WARUNG (GATEKEEPER)
+  if (!activeWarung) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6 text-center">
+        <div className="bg-primary p-4 rounded-3xl shadow-xl shadow-primary/20 mb-8">
+          <Store className="h-12 w-12 text-white" />
+        </div>
+        <h1 className="text-2xl font-black text-slate-800 mb-2">PILIH WARUNG</h1>
+        <p className="text-slate-500 text-sm mb-8 font-medium">Pilih data warung yang ingin Anda kelola.</p>
+        
+        <div className="grid gap-4 w-full max-w-xs">
+          {WARUNG_LIST.map((warung) => (
+            <Button 
+              key={warung.id} 
+              variant="outline" 
+              className="h-16 text-lg font-bold border-2 border-white bg-white hover:border-primary/50 shadow-sm rounded-2xl gap-3"
+              onClick={() => handleSelectWarung(warung)}
+            >
+              <Store className="h-5 w-5 text-primary" />
+              {warung.name}
+            </Button>
+          ))}
+        </div>
+
+        <Dialog open={showPinDialog} onOpenChange={setShowPinDialog}>
+          <DialogContent className="sm:max-w-[350px] rounded-3xl border-none shadow-2xl">
+            <DialogHeader className="items-center pb-2">
+              <div className="bg-blue-50 p-3 rounded-full mb-4">
+                <Lock className="h-6 w-6 text-primary" />
+              </div>
+              <DialogTitle className="text-xl font-black text-slate-800 uppercase tracking-tight">PIN {tempWarung?.name}</DialogTitle>
+            </DialogHeader>
+            <div className="py-6 space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="pin" className="text-xs font-black text-slate-400 uppercase tracking-widest text-center block">Masukkan Kode Akses</Label>
+                <Input 
+                  id="pin"
+                  type="password"
+                  inputMode="numeric"
+                  value={pinInput}
+                  onChange={(e) => setPinInput(e.target.value)}
+                  className="h-16 text-3xl font-black text-center tracking-[0.5em] border-2 border-slate-100 bg-slate-50 focus:ring-primary rounded-2xl"
+                  autoFocus
+                  onKeyDown={(e) => e.key === 'Enter' && handleVerifyPin()}
+                />
+              </div>
+              <Button onClick={handleVerifyPin} className="w-full h-14 text-base font-black rounded-2xl shadow-lg shadow-primary/20">
+                BUKA DATA WARUNG
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+      </div>
+    );
+  }
 
   const isLoading = authLoading || (user && dataLoading);
 
@@ -144,11 +229,20 @@ export default function Home() {
                 <div className="bg-primary p-1.5 rounded-lg shrink-0 shadow-sm shadow-primary/20">
                   <Store className="h-4 w-4 text-white" />
                 </div>
-                <h1 className="text-sm font-black tracking-tight text-primary truncate uppercase">BARANG & RORIS</h1>
+                <h1 className="text-sm font-black tracking-tight text-primary truncate uppercase">{activeWarung.name}</h1>
               </button>
             </SheetTrigger>
-            <LaporanDrawer products={rawProducts} />
+            <LaporanDrawer products={rawProducts} warungId={activeWarung.id} />
           </Sheet>
+          
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            onClick={handleGantiWarung}
+            className="text-[10px] font-black text-slate-400 uppercase gap-1.5 px-2 h-8 rounded-full hover:bg-slate-50"
+          >
+            <LogOut className="h-3 w-3" /> Ganti Warung
+          </Button>
         </div>
         
         <div className="px-4 flex flex-col gap-2">
@@ -205,9 +299,7 @@ export default function Home() {
           <Alert variant="destructive" className="mb-4">
             <AlertCircle className="h-4 w-4" />
             <AlertTitle>Error Database</AlertTitle>
-            <AlertDescription>
-              {dbError.message}
-            </AlertDescription>
+            <AlertDescription>{dbError.message}</AlertDescription>
           </Alert>
         )}
 
@@ -239,15 +331,11 @@ export default function Home() {
                       <div className="grid grid-cols-2 gap-y-2 mb-2">
                         <div>
                           <p className="text-[10px] text-slate-400 font-bold uppercase">Harga Jual</p>
-                          <p className="text-base font-black text-primary leading-tight">
-                            {formatCurrency(product.hargaJual)}
-                          </p>
+                          <p className="text-base font-black text-primary leading-tight">{formatCurrency(product.hargaJual)}</p>
                         </div>
                         <div>
                           <p className="text-[10px] text-slate-400 font-bold uppercase">Modal</p>
-                          <p className="text-xs font-bold text-slate-600">
-                            {formatCurrency(product.modal)}
-                          </p>
+                          <p className="text-xs font-bold text-slate-600">{formatCurrency(product.modal)}</p>
                         </div>
                         <div 
                           className="cursor-pointer group/stok"
@@ -312,7 +400,7 @@ export default function Home() {
                               onClick={() => handleDelete(product.id)}
                             >
                               <div className="bg-red-100/20 p-2 rounded-lg">
-                                <Trash2 className="h-5 w-5 text-white" />
+                                <Plus className="h-5 w-5 text-white rotate-45" />
                               </div>
                               Hapus Barang Permanen
                             </Button>
@@ -331,13 +419,11 @@ export default function Home() {
       {/* FAB - Tambah Barang */}
       <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
         <DialogTrigger asChild>
-          <Button 
-            className="fixed bottom-6 right-6 h-14 w-14 rounded-full fab-shadow z-20 p-0 shadow-lg shadow-primary/40 active:scale-95 transition-transform"
-          >
+          <Button className="fixed bottom-6 right-6 h-14 w-14 rounded-full fab-shadow z-20 p-0 shadow-lg shadow-primary/40 active:scale-95 transition-transform">
             <Plus className="h-8 w-8" />
           </Button>
         </DialogTrigger>
-        <ProductForm onSuccess={() => setIsAddOpen(false)} />
+        <ProductForm warungId={activeWarung.id} onSuccess={() => setIsAddOpen(false)} />
       </Dialog>
 
       {/* Dialog Edit Barang Lengkap */}
@@ -345,6 +431,7 @@ export default function Home() {
         {editingProduct && (
           <ProductForm 
             product={editingProduct} 
+            warungId={activeWarung.id}
             onSuccess={() => {
               setIsEditOpen(false);
               setEditingProduct(null);
@@ -378,10 +465,7 @@ export default function Home() {
             </div>
           </div>
           <DialogFooter>
-            <Button 
-              onClick={handleQuickUpdateStock}
-              className="w-full h-12 font-black shadow-lg shadow-primary/20"
-            >
+            <Button onClick={handleQuickUpdateStock} className="w-full h-12 font-black shadow-lg shadow-primary/20">
               SIMPAN STOK
             </Button>
           </DialogFooter>

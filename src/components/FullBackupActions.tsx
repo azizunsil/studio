@@ -1,3 +1,4 @@
+
 "use client"
 
 import React, { useRef } from 'react';
@@ -7,53 +8,41 @@ import { useToast } from '@/hooks/use-toast';
 import { useDatabase } from '@/firebase';
 import { ref, get, set } from 'firebase/database';
 
-export function FullBackupActions() {
+interface FullBackupActionsProps {
+  warungId: string;
+}
+
+export function FullBackupActions({ warungId }: FullBackupActionsProps) {
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const database = useDatabase();
 
   const handleBackup = async () => {
-    if (!database) return;
+    if (!database || !warungId) return;
     try {
-      // Mengambil data satu per satu dari path yang diizinkan untuk mematuhi Security Rules
-      const [productsSnap, settingsSnap, modalChecksSnap] = await Promise.all([
-        get(ref(database, 'products')),
-        get(ref(database, 'settings')),
-        get(ref(database, 'modalChecks'))
-      ]);
-
+      const snapshot = await get(ref(database, `warungs/${warungId}`));
       const backupData = {
         app: "Oya Apps / Barang & Roris",
-        version: 1,
+        warungId: warungId,
         exportedAt: new Date().toISOString(),
-        data: {
-          products: productsSnap.val() || {},
-          settings: settingsSnap.val() || {},
-          modalChecks: modalChecksSnap.val() || {}
-        }
+        data: snapshot.val() || {}
       };
 
       const blob = new Blob([JSON.stringify(backupData, null, 2)], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
-      const dateStr = new Date().toISOString().split('T')[0];
       link.setAttribute("href", url);
-      link.setAttribute("download", `backup-oya-apps-${dateStr}.json`);
-      link.style.visibility = 'hidden';
-      document.body.appendChild(link);
+      link.setAttribute("download", `Backup_Lengkap_${warungId}_${new Date().toISOString().split('T')[0]}.json`);
       link.click();
-      document.body.removeChild(link);
-      
       toast({ title: "Berhasil", description: "Backup JSON berhasil diunduh." });
     } catch (error: any) {
-      console.error("Backup Error:", error);
-      toast({ variant: "destructive", title: "Gagal", description: error.message || "Gagal mengambil data dari database." });
+      toast({ variant: "destructive", title: "Gagal", description: error.message });
     }
   };
 
   const handleRestore = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (!file || !database) return;
+    if (!file || !database || !warungId) return;
 
     const reader = new FileReader();
     reader.onload = async (e) => {
@@ -61,37 +50,13 @@ export function FullBackupActions() {
         const text = e.target?.result as string;
         const backup = JSON.parse(text);
 
-        if (!backup.data) {
-          throw new Error("Format file backup tidak valid (Objek 'data' tidak ditemukan).");
-        }
+        if (!backup.data) throw new Error("Format file tidak valid.");
+        if (!confirm(`Hapus data warung ${warungId} saat ini dan ganti dengan isi file backup?`)) return;
 
-        if (!confirm("Peringatan: Restore ini akan menimpa data produk, pengaturan, dan riwayat modal yang ada saat ini. Lanjutkan?")) {
-          return;
-        }
-
-        // Restore masing-masing node jika ada di file backup
-        const restorePromises = [];
-        
-        if (backup.data.products) {
-          restorePromises.push(set(ref(database, 'products'), backup.data.products));
-        }
-        if (backup.data.settings) {
-          restorePromises.push(set(ref(database, 'settings'), backup.data.settings));
-        }
-        if (backup.data.modalChecks) {
-          restorePromises.push(set(ref(database, 'modalChecks'), backup.data.modalChecks));
-        }
-
-        await Promise.all(restorePromises);
-
-        toast({ title: "Berhasil", description: "Seluruh data berhasil dipulihkan dari file JSON." });
+        await set(ref(database, `warungs/${warungId}`), backup.data);
+        toast({ title: "Berhasil", description: "Data warung berhasil dipulihkan." });
       } catch (error: any) {
-        console.error("Restore Error:", error);
-        toast({ 
-          variant: "destructive", 
-          title: "Gagal Restore", 
-          description: error.message || "Format file tidak valid." 
-        });
+        toast({ variant: "destructive", title: "Gagal Restore", description: error.message });
       }
     };
     reader.readAsText(file);
@@ -100,29 +65,9 @@ export function FullBackupActions() {
 
   return (
     <div className="grid grid-cols-2 gap-2 w-full">
-      <Button 
-        variant="outline" 
-        onClick={handleBackup}
-        className="h-9 bg-white border-slate-200 shadow-sm rounded-lg hover:bg-slate-50 text-primary font-bold gap-1.5 text-[10px]"
-      >
-        <Database className="h-3.5 w-3.5" /> BACKUP LENGKAP
-      </Button>
-
-      <Button 
-        variant="outline" 
-        onClick={() => fileInputRef.current?.click()}
-        className="h-9 bg-white border-slate-200 shadow-sm rounded-lg hover:bg-slate-50 text-primary font-bold gap-1.5 text-[10px]"
-      >
-        <FileUp className="h-3.5 w-3.5" /> RESTORE LENGKAP
-      </Button>
-
-      <input
-        type="file"
-        ref={fileInputRef}
-        onChange={handleRestore}
-        accept=".json"
-        className="hidden"
-      />
+      <Button variant="outline" onClick={handleBackup} className="h-9 bg-white text-primary font-bold text-[10px] gap-1.5"><Database className="h-3.5 w-3.5" /> BACKUP FULL</Button>
+      <Button variant="outline" onClick={() => fileInputRef.current?.click()} className="h-9 bg-white text-primary font-bold text-[10px] gap-1.5"><FileUp className="h-3.5 w-3.5" /> RESTORE FULL</Button>
+      <input type="file" ref={fileInputRef} onChange={handleRestore} accept=".json" className="hidden" />
     </div>
   );
 }

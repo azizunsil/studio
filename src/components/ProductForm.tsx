@@ -1,7 +1,7 @@
 
 "use client"
 
-import React, { useEffect } from 'react';
+import React from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -26,10 +26,11 @@ const schema = z.object({
 
 interface ProductFormProps {
   product?: Product;
+  warungId: string;
   onSuccess: () => void;
 }
 
-export function ProductForm({ product, onSuccess }: ProductFormProps) {
+export function ProductForm({ product, warungId, onSuccess }: ProductFormProps) {
   const database = useDatabase();
   const { toast } = useToast();
 
@@ -58,11 +59,9 @@ export function ProductForm({ product, onSuccess }: ProductFormProps) {
   const selectedCategory = watch('kategori');
 
   const onSubmit = (data: z.infer<typeof schema>) => {
-    if (!database) return;
+    if (!database || !warungId) return;
 
     const now = Date.now();
-    
-    // Membangun payload dasar yang bersih
     const finalPayload: any = {
       namaBarang: data.namaBarang,
       kategori: data.kategori,
@@ -71,31 +70,27 @@ export function ProductForm({ product, onSuccess }: ProductFormProps) {
       stok: Number(data.stok),
     };
 
-    // Penanganan khusus stokAwalTitipan
     if (data.kategori === 'Titipan') {
       finalPayload.stokAwalTitipan = Number(data.stokAwalTitipan || 0);
     } else {
-      // Di Realtime Database, update dengan nilai null akan menghapus field tersebut
       finalPayload.stokAwalTitipan = null;
     }
 
     if (product) {
-      // Logika update: cek apakah stok berubah untuk memperbarui timestamp
       if (finalPayload.stok !== product.stok) {
         finalPayload.lastStockUpdateAt = now;
       } else {
         finalPayload.lastStockUpdateAt = product.lastStockUpdateAt || now;
       }
       
-      const itemRef = ref(database, `products/${product.id}`);
+      const itemRef = ref(database, `warungs/${warungId}/products/${product.id}`);
       update(itemRef, finalPayload).catch((err) => {
         toast({ variant: "destructive", title: "Gagal memperbarui", description: err.message });
       });
     } else {
-      // Logika tambah baru
       finalPayload.createdAt = now;
       finalPayload.lastStockUpdateAt = now;
-      const productsRef = ref(database, 'products');
+      const productsRef = ref(database, `warungs/${warungId}/products`);
       push(productsRef, finalPayload).catch((err) => {
         toast({ variant: "destructive", title: "Gagal menyimpan", description: err.message });
       });
@@ -114,21 +109,13 @@ export function ProductForm({ product, onSuccess }: ProductFormProps) {
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 py-4">
         <div className="space-y-2">
           <Label htmlFor="namaBarang" className="font-bold text-slate-700">Nama Barang</Label>
-          <Input 
-            id="namaBarang" 
-            {...register('namaBarang')} 
-            placeholder="Contoh: Signature" 
-            className="h-12 border-slate-200 focus:ring-primary bg-slate-50"
-          />
+          <Input id="namaBarang" {...register('namaBarang')} placeholder="Contoh: Signature" className="h-12 border-slate-200 focus:ring-primary bg-slate-50" />
           {errors.namaBarang && <p className="text-xs text-destructive font-medium">{errors.namaBarang.message}</p>}
         </div>
 
         <div className="space-y-2">
           <Label htmlFor="kategori" className="font-bold text-slate-700">Kategori</Label>
-          <Select 
-            defaultValue={watch('kategori')} 
-            onValueChange={(val) => setValue('kategori', val as any)}
-          >
+          <Select defaultValue={watch('kategori')} onValueChange={(val) => setValue('kategori', val as any)}>
             <SelectTrigger className="h-12 border-slate-200 bg-slate-50">
               <SelectValue placeholder="Pilih Kategori" />
             </SelectTrigger>
@@ -146,69 +133,28 @@ export function ProductForm({ product, onSuccess }: ProductFormProps) {
         {selectedCategory === 'Titipan' && (
           <div className="space-y-2 bg-blue-50 p-3 rounded-lg border border-blue-100">
             <Label htmlFor="stokAwalTitipan" className="font-bold text-blue-700">Stok Awal Titipan</Label>
-            <Input 
-              id="stokAwalTitipan" 
-              type="number" 
-              {...register('stokAwalTitipan')} 
-              onFocus={(e) => {
-                if (e.target.value === '0') {
-                  setValue('stokAwalTitipan', '' as any);
-                }
-              }}
-              onBlur={(e) => {
-                if (e.target.value === '') {
-                  setValue('stokAwalTitipan', 0);
-                }
-              }}
-              placeholder="0" 
-              className="h-12 border-blue-200 bg-white"
-            />
-            <p className="text-[10px] text-blue-500 italic">*Digunakan untuk menghitung pengurang modal.</p>
+            <Input id="stokAwalTitipan" type="number" {...register('stokAwalTitipan')} onFocus={(e) => e.target.value === '0' && setValue('stokAwalTitipan', '' as any)} onBlur={(e) => e.target.value === '' && setValue('stokAwalTitipan', 0)} placeholder="0" className="h-12 border-blue-200 bg-white" />
           </div>
         )}
 
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-2">
             <Label htmlFor="modal" className="font-bold text-slate-700">Modal (Rp)</Label>
-            <Input 
-              id="modal" 
-              type="number" 
-              {...register('modal')} 
-              onFocus={(e) => e.target.select()} 
-              placeholder="0" 
-              className="h-12 border-slate-200 bg-slate-50"
-            />
-            {errors.modal && <p className="text-xs text-destructive font-medium">{errors.modal.message}</p>}
+            <Input id="modal" type="number" {...register('modal')} onFocus={(e) => e.target.select()} placeholder="0" className="h-12 border-slate-200 bg-slate-50" />
           </div>
           <div className="space-y-2">
             <Label htmlFor="hargaJual" className="font-bold text-slate-700">Harga Jual (Rp)</Label>
-            <Input 
-              id="hargaJual" 
-              type="number" 
-              {...register('hargaJual')} 
-              onFocus={(e) => e.target.select()} 
-              placeholder="0" 
-              className="h-12 border-slate-200 bg-slate-50"
-            />
-            {errors.hargaJual && <p className="text-xs text-destructive font-medium">{errors.hargaJual.message}</p>}
+            <Input id="hargaJual" type="number" {...register('hargaJual')} onFocus={(e) => e.target.select()} placeholder="0" className="h-12 border-slate-200 bg-slate-50" />
           </div>
         </div>
 
         <div className="space-y-2">
           <Label htmlFor="stok" className="font-bold text-slate-700">Stok (Item)</Label>
-          <Input 
-            id="stok" 
-            type="number" 
-            {...register('stok')} 
-            onFocus={(e) => e.target.select()} 
-            placeholder="0" 
-            className="h-12 border-slate-200 bg-slate-50"
-          />
-          {errors.stok && <p className="text-xs text-destructive font-medium">{errors.stok.message}</p>}
+          <Input id="stok" type="number" {...register('stok')} onFocus={(e) => e.target.select()} placeholder="0" className="h-12 border-slate-200 bg-slate-50" />
         </div>
 
         <DialogFooter className="pt-4">
-          <Button type="submit" disabled={isSubmitting} className="w-full h-14 text-base font-black shadow-lg shadow-primary/20">
+          <Button type="submit" disabled={isSubmitting} className="w-full h-14 text-base font-black shadow-lg shadow-primary/20 uppercase">
             {product ? 'SIMPAN PERUBAHAN' : 'SIMPAN BARANG'}
           </Button>
         </DialogFooter>
@@ -216,4 +162,3 @@ export function ProductForm({ product, onSuccess }: ProductFormProps) {
     </DialogContent>
   );
 }
-

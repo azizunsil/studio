@@ -12,3 +12,9 @@ export interface Product {
   lastStockUpdateAt?: number; // Waktu terakhir stok diubah
   createdAt: number;
 }
+
+export interface Warung {
+  id: string;
+  name: string;
+  pin: string;
+}
