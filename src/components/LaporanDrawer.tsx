@@ -275,7 +275,7 @@ export function LaporanDrawer({ products }: LaporanDrawerProps) {
                   className="w-full h-10 gap-2 text-[10px] font-black uppercase bg-white text-primary border border-primary/20 hover:bg-slate-100 shadow-none"
                   variant="outline"
                 >
-                  <History className="h-3.5 w-3.5" /> Simpan Riwayat Cek
+                  <History className="h-3.5 w-3.5" /> Simpan Riwayat Modal
                 </Button>
               </div>
 
@@ -339,7 +339,7 @@ export function LaporanDrawer({ products }: LaporanDrawerProps) {
           </section>
 
           <section>
-            <h3 className="text-xs font-black text-muted-foreground uppercase tracking-widest mb-3">Cadangan Data</h3>
+            <h3 className="text-xs font-black text-muted-foreground uppercase tracking-widest mb-3">Cadangan Data Produk</h3>
             <div className="pt-2">
               <CsvActions />
             </div>
