@@ -5,7 +5,7 @@ import { User, onAuthStateChanged, Auth, signInAnonymously, getRedirectResult } 
 
 /**
  * Hook untuk memantau status autentikasi pengguna.
- * Memastikan sesi anonim aktif sebelum mengizinkan akses ke database.
+ * Memastikan sesi anonim aktif sebelum mengizinkan akses ke database bagi user umum.
  * Juga menangani hasil dari login redirect Google.
  */
 export function useUser(auth: Auth) {
@@ -16,19 +16,16 @@ export function useUser(auth: Auth) {
     let isMounted = true;
 
     // Menangani hasil dari signInWithRedirect jika user baru saja kembali dari login Google
-    // Ini dieksekusi setiap kali aplikasi dimuat ulang
     getRedirectResult(auth)
       .then((result) => {
         if (isMounted && result?.user) {
-          setUser(result.user);
+          // Jika ada hasil redirect, biarkan onAuthStateChanged menanganinya
+          console.log("Redirect result success");
         }
       })
       .catch((error) => {
-        if (isMounted) {
-          // Hanya log error jika bukan error "no redirect in progress"
-          if (error.code !== 'auth/no-auth-event') {
-            console.error("Redirect Login Error:", error);
-          }
+        if (isMounted && error.code !== 'auth/no-auth-event') {
+          console.error("Redirect Login Error:", error);
         }
       });
 
@@ -39,8 +36,9 @@ export function useUser(auth: Auth) {
         setUser(currentUser);
         setLoading(false);
       } else {
-        // Jika tidak ada user sama sekali, lakukan sign-in anonim agar aplikasi tetap bisa digunakan
+        // Hanya login anonymous jika benar-benar tidak ada user (anonim atau google)
         try {
+          console.log("No user found, signing in anonymously...");
           await signInAnonymously(auth);
         } catch (error) {
           if (isMounted) {

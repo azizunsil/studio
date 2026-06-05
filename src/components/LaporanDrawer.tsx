@@ -13,7 +13,7 @@ import { FullBackupActions } from '@/components/FullBackupActions';
 import { useDatabase, useDoc, useCollection, useAuth, useUser } from '@/firebase';
 import { ref, set, push, remove } from 'firebase/database';
 import { signInWithRedirect, GoogleAuthProvider, signOut } from 'firebase/auth';
-import { Wallet, Target, ArrowRightLeft, TrendingUp, TrendingDown, CheckCircle2, History, Trash2, Clock, FileText, Lock, LogIn, LogOut, UserCheck } from 'lucide-react';
+import { Wallet, Target, ArrowRightLeft, TrendingUp, TrendingDown, CheckCircle2, History, Trash2, Clock, FileText, Lock, LogIn, LogOut, UserCheck, Bug } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { id } from 'date-fns/locale';
@@ -22,6 +22,9 @@ import { exportLaporanModalPdf } from '@/lib/pdf-generator';
 interface LaporanDrawerProps {
   products: Product[];
 }
+
+// KONSTANTA ADMIN UID - Isi dengan UID yang tampil di panel debug nanti
+const ADMIN_UID = "ISI_NANTI_DENGAN_UID_AKUN_GOOGLE_ADMIN";
 
 export function LaporanDrawer({ products }: LaporanDrawerProps) {
   const database = useDatabase();
@@ -33,7 +36,9 @@ export function LaporanDrawer({ products }: LaporanDrawerProps) {
   const [targetInput, setTargetInput] = useState<string>('');
   
   const modalTarget = (settingsData as any)?.modalTarget ?? 0;
-  const isAdmin = user?.email === 'azizunsil@gmail.com';
+
+  // LOGIK ADMIN BERDASARKAN UID DAN BUKAN ANONIM
+  const isAdmin = user?.uid === ADMIN_UID && user?.isAnonymous === false;
 
   useEffect(() => {
     if (modalTarget !== undefined && modalTarget !== null) {
@@ -101,11 +106,9 @@ export function LaporanDrawer({ products }: LaporanDrawerProps) {
 
   const handleAdminLogin = async () => {
     const provider = new GoogleAuthProvider();
-    // Gunakan custom parameter agar browser tidak memblokir redirect
     provider.setCustomParameters({ prompt: 'select_account' });
     
     try {
-      // Menggunakan Redirect sebagai pengganti Popup untuk stabilitas lebih baik di HP/PWA
       await signInWithRedirect(auth, provider);
     } catch (error: any) {
       toast({ 
@@ -466,6 +469,18 @@ export function LaporanDrawer({ products }: LaporanDrawerProps) {
                 </Button>
               </div>
             )}
+
+            {/* DEBUG PANEL - SEMENTARA */}
+            <div className="mt-8 p-4 bg-slate-900 text-white rounded-xl text-[10px] font-mono break-all space-y-1 border-t-4 border-amber-500">
+              <div className="flex items-center gap-2 text-amber-400 uppercase font-black mb-2">
+                <Bug className="h-3 w-3" /> Debug User Info
+              </div>
+              <p><span className="text-slate-500">Email:</span> {user?.email || 'N/A'}</p>
+              <p><span className="text-slate-500">UID:</span> <span className="text-blue-400">{user?.uid || 'N/A'}</span></p>
+              <p><span className="text-slate-500">Anon:</span> <span className={user?.isAnonymous ? 'text-amber-400' : 'text-emerald-400'}>{user?.isAnonymous ? 'Ya' : 'Tidak'}</span></p>
+              <p><span className="text-slate-500">Admin:</span> <span className={isAdmin ? 'text-emerald-400' : 'text-red-400'}>{isAdmin ? 'Ya' : 'Tidak'}</span></p>
+              <p><span className="text-slate-500">Provider:</span> {user?.providerData.map(p => p.providerId).join(', ') || 'N/A'}</p>
+            </div>
           </section>
         </div>
       </ScrollArea>
