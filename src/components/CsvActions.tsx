@@ -7,7 +7,7 @@ import { Download, Upload } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Product } from '@/lib/types';
 import { useDatabase, useCollection } from '@/firebase';
-import { ref, push, set } from 'firebase/database';
+import { ref, push, set, get, update } from 'firebase/database';
 
 interface CsvActionsProps {
   warungId: string;
@@ -19,6 +19,20 @@ export function CsvActions({ warungId }: CsvActionsProps) {
   const database = useDatabase();
 
   const { data: products = [] } = useCollection<Product>(database, `warungs/${warungId}/products`);
+
+  const normalize = (value: string) =>
+    (value || "")
+      .toString()
+      .trim()
+      .toLowerCase()
+      .replace(/\s+/g, " ");
+
+  const makeProductKey = (name: string, category: string) => {
+    const n = normalize(name);
+    const c = normalize(category) || "lainnya";
+    if (!n) return null;
+    return `${n}::${c}`;
+  };
 
   const handleExport = () => {
     if (products.length === 0) {
@@ -46,43 +60,120 @@ export function CsvActions({ warungId }: CsvActionsProps) {
     toast({ title: "Berhasil", description: "Data berhasil diekspor ke CSV." });
   };
 
-  const handleImport = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImport = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file || !database || !warungId) return;
 
     const reader = new FileReader();
-    reader.onload = (e) => {
+    reader.onload = async (e) => {
       try {
         const text = e.target?.result as string;
         const lines = text.split("\n");
         if (lines.length <= 1) return;
 
+        // 1. Ambil data produk lama untuk indexing
+        const existingSnapshot = await get(ref(database, `warungs/${warungId}/products`));
+        const existingData = existingSnapshot.val() || {};
+        const existingIndex = new Map<string, string>(); // Key -> ID
+
+        Object.entries(existingData).forEach(([id, p]: [string, any]) => {
+          const key = makeProductKey(p.namaBarang, p.kategori);
+          if (key) existingIndex.set(key, id);
+        });
+
+        let added = 0;
+        let updated = 0;
+        let skipped = 0;
+        let failed = 0;
         const now = Date.now();
+
+        // 2. Loop baris CSV (mulai dari baris ke-2 untuk skip header)
         for (let i = 1; i < lines.length; i++) {
           const line = lines[i].trim();
           if (!line) continue;
+
+          // Regex untuk menangani kolom yang mungkin mengandung koma di dalam tanda kutip
           const parts = line.match(/(".*?"|[^",]+)(?=\s*,|\s*$)/g);
-          if (!parts || parts.length < 5) continue;
+          if (!parts || parts.length < 5) {
+            failed++;
+            continue;
+          }
+
+          // Pembersihan tanda kutip dan ekstraksi data
+          const cleanPart = (idx: number) => (parts[idx] || "").replace(/^"|"$/g, "").trim();
+          
+          // Deteksi apakah CSV memiliki kolom ID di awal (hasil ekspor aplikasi ini sendiri) atau format manual
+          const isExportFormat = parts.length >= 6 && lines[0].toLowerCase().includes("id produk");
+          
+          let rawNama, rawKategori, rawModal, rawHarga, rawStok, rawStokAwal;
+
+          if (isExportFormat) {
+            rawNama = cleanPart(1);
+            rawKategori = cleanPart(2);
+            rawModal = parseFloat(cleanPart(3)) || 0;
+            rawHarga = parseFloat(cleanPart(4)) || 0;
+            rawStok = parseFloat(cleanPart(5)) || 0;
+            rawStokAwal = parseFloat(cleanPart(6)) || 0;
+          } else {
+            rawNama = cleanPart(0);
+            rawKategori = cleanPart(1);
+            rawModal = parseFloat(cleanPart(2)) || 0;
+            rawHarga = parseFloat(cleanPart(3)) || 0;
+            rawStok = parseFloat(cleanPart(4)) || 0;
+            rawStokAwal = parseFloat(cleanPart(5)) || 0;
+          }
+
+          const key = makeProductKey(rawNama, rawKategori);
+          if (!key) {
+            skipped++;
+            continue;
+          }
 
           const payload: any = {
-            namaBarang: (parts[1] || "").replace(/"/g, "").trim(),
-            kategori: (parts[2] || "Lainnya").replace(/"/g, "").trim() as any,
-            modal: parseFloat(parts[3]) || 0,
-            hargaJual: parseFloat(parts[4]) || 0,
-            stok: parseFloat(parts[5]) || 0,
-            createdAt: now,
+            namaBarang: rawNama,
+            kategori: (rawKategori || "Lainnya") as any,
+            modal: rawModal,
+            hargaJual: rawHarga,
+            stok: rawStok,
             lastStockUpdateAt: now
           };
 
           if (payload.kategori === 'Titipan') {
-            payload.stokAwalTitipan = parseFloat(parts[6]) || payload.stok;
+            payload.stokAwalTitipan = rawStokAwal || rawStok;
           }
 
-          push(ref(database, `warungs/${warungId}/products`), payload);
+          const existingId = existingIndex.get(key);
+
+          if (existingId) {
+            // UPDATE: Gunakan ID yang sudah ada
+            const itemRef = ref(database, `warungs/${warungId}/products/${existingId}`);
+            update(itemRef, {
+              ...payload,
+              // Tetap gunakan createdAt yang lama jika ada
+              createdAt: existingData[existingId].createdAt || now
+            });
+            updated++;
+          } else {
+            // ADD: Buat ID baru
+            const productsRef = ref(database, `warungs/${warungId}/products`);
+            const newRef = push(productsRef);
+            set(newRef, {
+              ...payload,
+              createdAt: now
+            });
+            // Update index agar baris selanjutnya di file yang sama tidak membuat duplikat
+            existingIndex.set(key, newRef.key!);
+            added++;
+          }
         }
-        toast({ title: "Impor Selesai", description: "Data CSV telah ditambahkan ke database warung." });
+
+        toast({ 
+          title: "Import Selesai", 
+          description: `Berhasil: ${added} ditambahkan, ${updated} diperbarui. Gagal/Lewat: ${failed + skipped}.` 
+        });
       } catch (error) {
-        toast({ variant: "destructive", title: "Gagal", description: "Format CSV tidak valid." });
+        console.error("Import Error:", error);
+        toast({ variant: "destructive", title: "Gagal", description: "Format CSV tidak valid atau terjadi kesalahan sistem." });
       }
     };
     reader.readAsText(file);
