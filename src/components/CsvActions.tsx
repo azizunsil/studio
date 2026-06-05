@@ -1,4 +1,3 @@
-
 "use client"
 
 import React, { useRef } from 'react';
@@ -70,8 +69,10 @@ export function CsvActions() {
           });
         }
 
-        let importedCount = 0;
+        const existingIds = new Set(products.map(p => p.id));
         let updatedCount = 0;
+        let restoredCount = 0;
+        let newCount = 0;
         const now = Date.now();
         
         for (let i = 1; i < lines.length; i++) {
@@ -155,21 +156,25 @@ export function CsvActions() {
 
           // Simpan ke Firebase
           if (idCsv) {
-            // Update data yang sudah ada
+            if (existingIds.has(idCsv)) {
+              updatedCount++;
+            } else {
+              restoredCount++;
+            }
+            // Update data yang sudah ada atau pulihkan yang sudah dihapus
             const itemRef = ref(database, `products/${idCsv}`);
             set(itemRef, payload);
-            updatedCount++;
           } else {
             // Tambah data baru
             const productsRef = ref(database, 'products');
             push(productsRef, payload);
-            importedCount++;
+            newCount++;
           }
         }
 
         toast({ 
           title: "Proses Selesai", 
-          description: `${updatedCount} produk diperbarui, ${importedCount} produk baru ditambahkan.` 
+          description: `${updatedCount} produk diperbarui, ${restoredCount} produk dipulihkan, ${newCount} produk baru ditambahkan.` 
         });
       } catch (error) {
         console.error("Import Error:", error);
