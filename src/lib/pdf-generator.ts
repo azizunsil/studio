@@ -15,6 +15,7 @@ interface PdfExportOptions {
   selisih: number;
   status: string;
   modalHistory: any[];
+  warungName: string;
 }
 
 export const exportLaporanModalPdf = ({
@@ -25,7 +26,8 @@ export const exportLaporanModalPdf = ({
   totalNilaiTitipanTerjual,
   selisih,
   status,
-  modalHistory
+  modalHistory,
+  warungName
 }: PdfExportOptions) => {
   const doc = new jsPDF();
   const now = new Date();
@@ -43,7 +45,7 @@ export const exportLaporanModalPdf = ({
   // 1. JUDUL
   doc.setFontSize(18);
   doc.setTextColor(37, 99, 235);
-  doc.text("Laporan Modal Barang & Roris", 14, 20);
+  doc.text(`Laporan Modal - ${warungName}`, 14, 20);
   
   // 2. INFO LAPORAN
   doc.setFontSize(10);
@@ -96,7 +98,7 @@ export const exportLaporanModalPdf = ({
     headStyles: { fillColor: [51, 65, 85] },
   });
 
-  // 5. RIWAYAT MODAL (Pindah ke posisi 4 dalam daftar PDF)
+  // 5. RIWAYAT MODAL
   currentY = (doc as any).lastAutoTable.finalY + 15;
   if (modalHistory && modalHistory.length > 0) {
     if (currentY > 240) {
@@ -136,7 +138,6 @@ export const exportLaporanModalPdf = ({
   regularCategories.forEach(cat => {
     const catProducts = products.filter(p => p.kategori === cat);
     if (catProducts.length > 0) {
-      // Cek sisa ruang di halaman
       if (currentY > 250) {
         doc.addPage();
         currentY = 20;
@@ -166,7 +167,7 @@ export const exportLaporanModalPdf = ({
     }
   });
 
-  // 7. DETAIL BARANG TITIPAN (Tetap paling bawah)
+  // 7. DETAIL BARANG TITIPAN
   const titipanProducts = products.filter(p => p.kategori === 'Titipan');
   if (titipanProducts.length > 0) {
     if (currentY > 240) {
@@ -203,9 +204,6 @@ export const exportLaporanModalPdf = ({
     doc.setFontSize(10);
     doc.setTextColor(30, 41, 59);
     doc.text(`Total Nilai Titipan Terjual: ${formatCurrency(totalNilaiTitipanTerjual)}`, 14, currentY);
-    doc.setFontSize(8);
-    doc.setTextColor(100, 116, 139);
-    doc.text("* Nilai titipan terjual bersifat sebagai pengurang modal.", 14, currentY + 5);
   }
 
   // 8. FOOTER HALAMAN
@@ -222,5 +220,5 @@ export const exportLaporanModalPdf = ({
     );
   }
 
-  doc.save(`laporan-modal-barang-roris-${format(now, "yyyy-MM-dd")}.pdf`);
+  doc.save(`laporan-modal-${warungName.toLowerCase().replace(/\s+/g, '-')}-${format(now, "yyyy-MM-dd")}.pdf`);
 };

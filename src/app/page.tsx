@@ -1,4 +1,3 @@
-
 "use client"
 
 import React, { useState, useMemo, useEffect } from 'react';
@@ -31,12 +30,10 @@ export default function Home() {
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
   
-  // State untuk Quick Stock Edit
   const [quickStockProduct, setQuickStockProduct] = useState<Product | null>(null);
   const [isQuickStockOpen, setIsQuickStockOpen] = useState(false);
   const [newStokInput, setNewStokInput] = useState('');
 
-  // State Akses Warung/Toko
   const [activeWarung, setActiveWarung] = useState<Warung | null>(null);
   const [showPinDialog, setShowPinDialog] = useState(false);
   const [tempWarung, setTempWarung] = useState<Warung | null>(null);
@@ -48,16 +45,18 @@ export default function Home() {
   const auth = useAuth();
   const { user, loading: authLoading } = useUser(auth);
 
-  // Load Warung dari LocalStorage saat startup
   useEffect(() => {
     const saved = localStorage.getItem('selectedWarung');
     if (saved) {
-      const parsed = JSON.parse(saved);
-      // Validasi apakah toko masih ada di daftar terbaru
-      const exists = WARUNG_LIST.find(w => w.id === parsed.id);
-      if (exists) {
-        setActiveWarung(parsed);
-      } else {
+      try {
+        const parsed = JSON.parse(saved);
+        const exists = WARUNG_LIST.find(w => w.id === parsed.id);
+        if (exists) {
+          setActiveWarung(parsed);
+        } else {
+          localStorage.removeItem('selectedWarung');
+        }
+      } catch (e) {
         localStorage.removeItem('selectedWarung');
       }
     }
@@ -171,7 +170,6 @@ export default function Home() {
 
   if (!isHydrated) return null;
 
-  // LAYAR PILIH TOKO (GATEKEEPER)
   if (!activeWarung) {
     return (
       <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6 text-center">
@@ -250,7 +248,7 @@ export default function Home() {
                 <h1 className="text-sm font-black tracking-tight text-primary truncate uppercase">{activeWarung.name}</h1>
               </button>
             </SheetTrigger>
-            <LaporanDrawer products={rawProducts} warungId={activeWarung.id} />
+            <LaporanDrawer products={rawProducts} warungId={activeWarung.id} warungName={activeWarung.name} />
           </Sheet>
           
           <Button 
@@ -434,7 +432,6 @@ export default function Home() {
         )}
       </div>
 
-      {/* FAB - Tambah Barang */}
       <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
         <DialogTrigger asChild>
           <Button className="fixed bottom-6 right-6 h-14 w-14 rounded-full fab-shadow z-20 p-0 shadow-lg shadow-primary/40 active:scale-95 transition-transform">
@@ -444,7 +441,6 @@ export default function Home() {
         <ProductForm warungId={activeWarung.id} onSuccess={() => setIsAddOpen(false)} />
       </Dialog>
 
-      {/* Dialog Edit Barang Lengkap */}
       <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
         {editingProduct && (
           <ProductForm 
@@ -458,7 +454,6 @@ export default function Home() {
         )}
       </Dialog>
 
-      {/* Dialog Quick Stock Edit */}
       <Dialog open={isQuickStockOpen} onOpenChange={setIsQuickStockOpen}>
         <DialogContent className="sm:max-w-[350px] rounded-t-3xl sm:rounded-2xl">
           <DialogHeader>

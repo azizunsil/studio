@@ -1,4 +1,3 @@
-
 "use client"
 
 import React, { useState, useEffect, useMemo } from 'react';
@@ -14,7 +13,7 @@ import { CsvActions } from '@/components/CsvActions';
 import { FullBackupActions } from '@/components/FullBackupActions';
 import { useDatabase, useDoc, useCollection } from '@/firebase';
 import { ref, set, push, remove } from 'firebase/database';
-import { Wallet, CheckCircle2, History, Trash2, Clock, FileText, Lock, TrendingUp, TrendingDown } from 'lucide-react';
+import { Wallet, CheckCircle2, History, Trash2, Clock, FileText, Lock, TrendingUp, TrendingDown, Package, Database } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { id } from 'date-fns/locale';
@@ -23,13 +22,13 @@ import { exportLaporanModalPdf } from '@/lib/pdf-generator';
 interface LaporanDrawerProps {
   products: Product[];
   warungId: string;
+  warungName: string;
 }
 
-export function LaporanDrawer({ products, warungId }: LaporanDrawerProps) {
+export function LaporanDrawer({ products, warungId, warungName }: LaporanDrawerProps) {
   const database = useDatabase();
   const { toast } = useToast();
   
-  // Baca pengaturan dan riwayat spesifik per toko
   const { data: settingsData } = useDoc(database, `warungs/${warungId}/settings`);
   const { data: historyData = [] } = useCollection(database, `warungs/${warungId}/modalChecks`);
   
@@ -141,11 +140,11 @@ export function LaporanDrawer({ products, warungId }: LaporanDrawerProps) {
     <SheetContent side="left" className="w-[85%] sm:w-[350px] p-0 border-r-0">
       <SheetHeader className="p-6 bg-primary text-white">
         <SheetTitle className="text-white text-xl font-black uppercase">LAPORAN USAHA</SheetTitle>
-        <SheetDescription className="text-primary-foreground/80 font-medium">Ringkasan modal dan inventaris.</SheetDescription>
+        <SheetDescription className="text-primary-foreground/80 font-medium">{warungName}</SheetDescription>
       </SheetHeader>
       
-      <ScrollArea className="h-[calc(100vh-80px)] px-6 py-4">
-        <div className="space-y-6 pb-20">
+      <ScrollArea className="h-[calc(100vh-140px)] px-6 py-4">
+        <div className="space-y-6 pb-24">
           {/* 1. INFORMASI STOK */}
           <section>
             <h3 className="text-xs font-black text-muted-foreground uppercase tracking-widest mb-3 flex items-center gap-2">
@@ -237,7 +236,7 @@ export function LaporanDrawer({ products, warungId }: LaporanDrawerProps) {
               <div className="pt-4 space-y-2">
                 <Label className="text-[10px] font-black text-slate-400 uppercase">Update Target</Label>
                 <div className="flex gap-2">
-                  <Input type="number" value={targetInput} onChange={(e) => setTargetInput(e.target.value)} className="h-9 text-xs font-bold bg-white" />
+                  <input type="number" value={targetInput} onChange={(e) => setTargetInput(e.target.value)} className="h-9 w-full px-3 text-xs font-bold bg-white border border-slate-200 rounded-md" placeholder="0" />
                   <Button onClick={handleSaveTarget} className="h-9 px-3 text-[10px] font-black uppercase">Simpan</Button>
                 </div>
               </div>
@@ -279,12 +278,18 @@ export function LaporanDrawer({ products, warungId }: LaporanDrawerProps) {
           <section className="space-y-6">
             <div className="bg-blue-50/50 p-4 rounded-xl border border-blue-100">
               <h3 className="text-xs font-black text-blue-600 uppercase mb-3 flex items-center gap-2"><FileText className="h-3.5 w-3.5" /> Ekspor Dokumen</h3>
-              <Button onClick={() => exportLaporanModalPdf({ products, modalTarget, totalModalAkhir, totalModalBiasa, totalNilaiTitipanTerjual, selisih, status, modalHistory: historyData })} className="w-full h-11 text-[11px] font-black uppercase bg-white text-blue-600 border-blue-200" variant="outline"><FileText className="h-4 w-4 mr-2" /> Export PDF</Button>
+              <Button 
+                onClick={() => exportLaporanModalPdf({ products, modalTarget, totalModalAkhir, totalModalBiasa, totalNilaiTitipanTerjual, selisih, status, modalHistory: historyData, warungName })} 
+                className="w-full h-11 text-[11px] font-black uppercase bg-white text-blue-600 border-blue-200" 
+                variant="outline"
+              >
+                <FileText className="h-4 w-4 mr-2" /> Export PDF
+              </Button>
             </div>
 
             <div className="border-2 border-dashed border-slate-100 p-4 rounded-xl">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-xs font-black text-muted-foreground uppercase tracking-widest">Fitur Backup</h3>
+                <h3 className="text-xs font-black text-muted-foreground uppercase tracking-widest flex items-center gap-2"><Database className="h-3 w-3" /> Fitur Backup</h3>
                 {!isBackupUnlocked && <Lock className="h-3 w-3 text-slate-300" />}
               </div>
               <div onClickCapture={(e) => !isBackupUnlocked && !checkBackupPin() && e.stopPropagation()} className="space-y-4">
