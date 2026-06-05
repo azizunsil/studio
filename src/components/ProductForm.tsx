@@ -150,7 +150,17 @@ export function ProductForm({ product, onSuccess }: ProductFormProps) {
               id="stokAwalTitipan" 
               type="number" 
               {...register('stokAwalTitipan')} 
-              placeholder="Jumlah awal dititipkan" 
+              onFocus={(e) => {
+                if (e.target.value === '0') {
+                  setValue('stokAwalTitipan', '' as any);
+                }
+              }}
+              onBlur={(e) => {
+                if (e.target.value === '') {
+                  setValue('stokAwalTitipan', 0);
+                }
+              }}
+              placeholder="0" 
               className="h-12 border-blue-200 bg-white"
             />
             <p className="text-[10px] text-blue-500 italic">*Digunakan untuk menghitung pengurang modal.</p>
