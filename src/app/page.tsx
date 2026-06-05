@@ -1,8 +1,7 @@
-
 "use client"
 
 import React, { useState, useMemo } from 'react';
-import { Search, Plus, Edit2, Trash2, Package, Store, MoreVertical, Loader2, AlertCircle, Clock } from 'lucide-react';
+import { Search, Plus, Edit2, Trash2, Package, Store, MoreVertical, Loader2, AlertCircle, Clock, ArrowUpDown } from 'lucide-react';
 import { Product } from '@/lib/types';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -16,12 +15,14 @@ import { ref, remove } from 'firebase/database';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { format, isToday } from 'date-fns';
 import { id } from 'date-fns/locale';
 
 export default function Home() {
   const [search, setSearch] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('Semua');
+  const [sortBy, setSortBy] = useState<string>('A-Z');
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
@@ -32,20 +33,41 @@ export default function Home() {
 
   const { data: rawProducts = [], loading: dataLoading, error: dbError } = useCollection<Product>(database, 'products');
 
-  const products = useMemo(() => {
-    return [...rawProducts].sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
-  }, [rawProducts]);
-
   const categories = ['Semua', 'Rokok', 'Sembako', 'Minuman', 'Sachet', 'Titipan', 'Lainnya'];
 
-  const filteredProducts = useMemo(() => {
-    return products.filter(p => {
+  const filteredAndSortedProducts = useMemo(() => {
+    // 1. Filter berdasarkan pencarian dan kategori
+    let result = rawProducts.filter(p => {
       const nama = p.namaBarang || '';
       const matchSearch = nama.toLowerCase().includes(search.toLowerCase());
       const matchCat = selectedCategory === 'Semua' || p.kategori === selectedCategory;
       return matchSearch && matchCat;
     });
-  }, [products, search, selectedCategory]);
+
+    // 2. Sort berdasarkan pilihan user
+    switch (sortBy) {
+      case 'A-Z':
+        result.sort((a, b) => (a.namaBarang || '').localeCompare(b.namaBarang || ''));
+        break;
+      case 'Terbaru':
+        result.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+        break;
+      case 'Stok Terendah':
+        result.sort((a, b) => (a.stok || 0) - (b.stok || 0));
+        break;
+      case 'Modal Terbesar':
+        result.sort((a, b) => {
+          const valA = (a.stok || 0) * (a.modal || 0);
+          const valB = (b.stok || 0) * (b.modal || 0);
+          return valB - valA;
+        });
+        break;
+      default:
+        result.sort((a, b) => (a.namaBarang || '').localeCompare(b.namaBarang || ''));
+    }
+
+    return result;
+  }, [rawProducts, search, selectedCategory, sortBy]);
 
   const handleDelete = (id: string) => {
     if (!database) return;
@@ -87,18 +109,38 @@ export default function Home() {
                 <h1 className="text-sm font-black tracking-tight text-primary truncate uppercase">BARANG & RORIS</h1>
               </button>
             </SheetTrigger>
-            <LaporanDrawer products={products} />
+            <LaporanDrawer products={rawProducts} />
           </Sheet>
         </div>
         
-        <div className="px-4 relative w-full">
-          <Search className="absolute left-7 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground z-10" />
-          <Input 
-            placeholder="Cari nama barang..." 
-            className="pl-10 h-10 bg-slate-50 border-slate-200 shadow-sm rounded-lg focus-visible:ring-primary w-full text-sm font-medium"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
+        <div className="px-4 flex flex-col gap-2">
+          <div className="relative w-full">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground z-10" />
+            <Input 
+              placeholder="Cari nama barang..." 
+              className="pl-10 h-10 bg-slate-50 border-slate-200 shadow-sm rounded-lg focus-visible:ring-primary w-full text-sm font-medium"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+          </div>
+
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5 shrink-0 px-1">
+              <ArrowUpDown className="h-3.5 w-3.5 text-slate-400" />
+              <span className="text-[10px] font-black text-slate-400 uppercase">Urutkan:</span>
+            </div>
+            <Select value={sortBy} onValueChange={setSortBy}>
+              <SelectTrigger className="h-8 border-slate-200 bg-white text-[10px] font-bold uppercase tracking-wider rounded-lg shadow-sm focus:ring-primary">
+                <SelectValue placeholder="Pilih Urutan" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="A-Z" className="text-[10px] font-bold uppercase">A-Z</SelectItem>
+                <SelectItem value="Terbaru" className="text-[10px] font-bold uppercase">Terbaru</SelectItem>
+                <SelectItem value="Stok Terendah" className="text-[10px] font-bold uppercase">Stok Terendah</SelectItem>
+                <SelectItem value="Modal Terbesar" className="text-[10px] font-bold uppercase">Modal Terbesar</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </div>
 
         <div className="w-full max-w-full overflow-x-auto no-scrollbar">
@@ -136,7 +178,7 @@ export default function Home() {
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
             <p className="text-xs text-slate-400 font-bold uppercase tracking-wider">Sinkronisasi Cloud...</p>
           </div>
-        ) : filteredProducts.length === 0 ? (
+        ) : filteredAndSortedProducts.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20 text-center opacity-50">
             <Package className="h-16 w-16 mb-4 text-muted-foreground/30" />
             <p className="text-lg font-bold text-slate-800">Tidak ada barang</p>
@@ -144,7 +186,7 @@ export default function Home() {
           </div>
         ) : (
           <div className="grid gap-3">
-            {filteredProducts.map((product) => (
+            {filteredAndSortedProducts.map((product) => (
               <Card key={product.id} className="overflow-hidden border border-slate-100 shadow-sm relative w-full hover:border-primary/20 transition-colors">
                 <CardContent className="p-4">
                   <div className="flex justify-between items-start">
