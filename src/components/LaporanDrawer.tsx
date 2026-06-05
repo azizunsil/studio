@@ -12,10 +12,11 @@ import { CsvActions } from '@/components/CsvActions';
 import { FullBackupActions } from '@/components/FullBackupActions';
 import { useDatabase, useDoc, useCollection } from '@/firebase';
 import { ref, set, push, remove } from 'firebase/database';
-import { Wallet, Target, ArrowRightLeft, TrendingUp, TrendingDown, CheckCircle2, History, Trash2, Clock } from 'lucide-react';
+import { Wallet, Target, ArrowRightLeft, TrendingUp, TrendingDown, CheckCircle2, History, Trash2, Clock, FileText } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { id } from 'date-fns/locale';
+import { exportLaporanModalPdf } from '@/lib/pdf-generator';
 
 interface LaporanDrawerProps {
   products: Product[];
@@ -160,6 +161,32 @@ export function LaporanDrawer({ products }: LaporanDrawerProps) {
     if (statusName === 'Surplus') return 'text-emerald-600 bg-emerald-50 border-emerald-100';
     if (statusName === 'Kurang') return 'text-destructive bg-red-50 border-red-100';
     return 'text-blue-600 bg-blue-50 border-blue-100';
+  };
+
+  const handleExportPdf = () => {
+    try {
+      exportLaporanModalPdf({
+        products,
+        modalTarget,
+        totalModalAkhir,
+        totalModalBiasa,
+        totalNilaiTitipanTerjual,
+        selisih,
+        status,
+        modalHistory: historyData
+      });
+      toast({
+        title: "PDF Berhasil Dibuat",
+        description: "Laporan modal telah diunduh.",
+      });
+    } catch (error) {
+      console.error("PDF Export Error:", error);
+      toast({
+        variant: "destructive",
+        title: "Gagal Export PDF",
+        description: "Terjadi kesalahan saat membuat file PDF.",
+      });
+    }
   };
 
   return (
@@ -339,6 +366,19 @@ export function LaporanDrawer({ products }: LaporanDrawerProps) {
           </section>
 
           <section className="space-y-4">
+            <div className="bg-blue-50/50 p-4 rounded-xl border border-blue-100 mb-4">
+              <h3 className="text-xs font-black text-blue-600 uppercase tracking-widest mb-3 flex items-center gap-2">
+                <FileText className="h-3.5 w-3.5" /> Ekspor Dokumen
+              </h3>
+              <Button 
+                onClick={handleExportPdf}
+                className="w-full h-11 gap-3 text-[11px] font-black uppercase bg-white text-blue-600 border-blue-200 hover:bg-blue-50 shadow-sm"
+                variant="outline"
+              >
+                <FileText className="h-4 w-4" /> Export Laporan PDF
+              </Button>
+            </div>
+
             <div>
               <h3 className="text-xs font-black text-muted-foreground uppercase tracking-widest mb-3">Cadangan Data Produk</h3>
               <div className="pt-1">
