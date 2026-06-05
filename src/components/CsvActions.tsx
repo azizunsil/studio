@@ -25,7 +25,13 @@ export function CsvActions() {
     const headers = ["Nama Barang", "Kategori", "Modal", "Harga Jual", "Stok", "Stok Awal Titipan", "Terakhir Update Stok", "Dibuat Pada"];
     const csvContent = [
       headers.join(","),
-      ...products.map(p => `"${p.namaBarang}","${p.kategori}",${p.modal},${p.hargaJual},${p.stok},${p.stokAwalTitipan || 0},"${p.lastStockUpdateAt ? new Date(p.lastStockUpdateAt).toISOString() : ''}","${new Date(p.createdAt).toISOString()}"`)
+      ...products.map(p => {
+        const lastUpdate = p.lastStockUpdateAt ? new Date(p.lastStockUpdateAt).toISOString() : '';
+        const created = p.createdAt ? new Date(p.createdAt).toISOString() : new Date().toISOString();
+        const stokAwal = p.kategori === 'Titipan' ? (p.stokAwalTitipan || 0) : 0;
+        
+        return `"${p.namaBarang}","${p.kategori}",${p.modal},${p.hargaJual},${p.stok},${stokAwal},"${lastUpdate}","${created}"`;
+      })
     ].join("\n");
 
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
@@ -54,20 +60,65 @@ export function CsvActions() {
         const productsRef = ref(database, 'products');
         
         for (let i = 1; i < lines.length; i++) {
-          if (!lines[i].trim()) continue;
+          const line = lines[i].trim();
+          if (!line) continue;
           
-          const parts = lines[i].match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g);
+          // Regex untuk menangani kolom yang diapit tanda kutip (bisa berisi koma)
+          const parts = line.match(/(".*?"|[^",]+)(?=\s*,|\s*$)/g);
+          
           if (parts && parts.length >= 5) {
-            const newProduct = {
-              namaBarang: parts[0].replace(/"/g, ""),
-              kategori: (parts[1] || 'Lainnya').replace(/"/g, "") as any,
-              modal: parseFloat(parts[2]),
-              hargaJual: parseFloat(parts[3]),
-              stok: parseFloat(parts[4]),
-              stokAwalTitipan: parts[5] ? parseFloat(parts[5]) : 0,
-              lastStockUpdateAt: parts[6] ? new Date(parts[6].replace(/"/g, "")).getTime() : Date.now(),
-              createdAt: parts[7] ? new Date(parts[7].replace(/"/g, "")).getTime() : Date.now(),
+            const namaBarang = parts[0].replace(/"/g, "").trim();
+            const kategori = (parts[1] || 'Lainnya').replace(/"/g, "").trim() as any;
+            const modal = parseFloat(parts[2]) || 0;
+            const hargaJual = parseFloat(parts[3]) || 0;
+            const stok = parseFloat(parts[4]) || 0;
+            
+            // Kolom opsional (mendukung CSV lama)
+            let stokAwalTitipan = parts[5] ? parseFloat(parts[5]) : 0;
+            let lastStockUpdateAtRaw = parts[6] ? parts[6].replace(/"/g, "").trim() : '';
+            let createdAtRaw = parts[7] ? parts[7].replace(/"/g, "").trim() : '';
+
+            const now = Date.now();
+            
+            // Membangun payload dasar
+            const newProduct: any = {
+              namaBarang,
+              kategori,
+              modal,
+              hargaJual,
+              stok,
             };
+
+            // Logika khusus kategori 'Titipan'
+            if (kategori === 'Titipan') {
+              // Jika kolom Stok Awal Titipan kosong/tidak ada, gunakan nilai stok saat ini
+              newProduct.stokAwalTitipan = (isNaN(stokAwalTitipan) || !parts[5]) ? stok : stokAwalTitipan;
+            } else {
+              // Set null agar field terhapus/tidak ada di database untuk kategori biasa
+              newProduct.stokAwalTitipan = null;
+            }
+
+            // Logika Penanganan Tanggal
+            if (lastStockUpdateAtRaw) {
+              const date = new Date(lastStockUpdateAtRaw).getTime();
+              newProduct.lastStockUpdateAt = isNaN(date) ? now : date;
+            } else {
+              newProduct.lastStockUpdateAt = now;
+            }
+
+            if (createdAtRaw) {
+              const date = new Date(createdAtRaw).getTime();
+              newProduct.createdAt = isNaN(date) ? now : date;
+            } else {
+              newProduct.createdAt = now;
+            }
+
+            // Pastikan tidak ada property undefined yang terkirim
+            Object.keys(newProduct).forEach(key => {
+              if (newProduct[key] === undefined) {
+                delete newProduct[key];
+              }
+            });
 
             push(productsRef, newProduct);
             importedCount++;
@@ -76,6 +127,7 @@ export function CsvActions() {
 
         toast({ title: "Proses Berhasil", description: `${importedCount} barang sedang diimpor.` });
       } catch (error) {
+        console.error("Import Error:", error);
         toast({ title: "Gagal", description: "Format file CSV tidak valid." });
       }
     };
