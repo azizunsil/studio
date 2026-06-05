@@ -211,29 +211,31 @@ export function LaporanDrawer({ products, warungId, warungName }: LaporanDrawerP
           {/* 4. CEK MODAL TOKO */}
           <section className="bg-slate-50 p-4 rounded-xl border border-slate-200 shadow-inner">
             <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-4 flex items-center gap-2"><Wallet className="h-3 w-3" /> Cek Modal Toko</h3>
-            <div className="space-y-3">
-              <div className="flex justify-between items-center">
-                <span className="text-xs text-slate-500 font-bold uppercase">Target Modal</span>
-                <span className="font-black text-slate-700">{formatCurrency(modalTarget)}</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-xs text-slate-500 font-bold uppercase">Modal Saat Ini</span>
-                <span className="font-black text-primary">{formatCurrency(totalModalAkhir)}</span>
-              </div>
-              <Separator className="bg-slate-200" />
-              <div className="flex justify-between items-center">
-                <div className="flex flex-col">
-                  <span className="text-[10px] text-slate-400 font-black uppercase">Selisih</span>
-                  <span className={`text-sm font-black ${statusColor}`}>{selisih >= 0 ? '+' : ''}{formatCurrency(selisih)}</span>
+            <div className="space-y-4">
+              <div className="space-y-3">
+                <div className="flex justify-between items-center">
+                  <span className="text-xs text-slate-500 font-bold uppercase">Target Modal</span>
+                  <span className="font-black text-slate-700">{formatCurrency(modalTarget)}</span>
                 </div>
-                <div className={`flex items-center gap-1.5 px-3 py-1 rounded-full bg-white border border-slate-100 shadow-sm ${statusColor}`}>
-                  <StatusIcon className="h-3.5 w-3.5" />
-                  <span className="text-xs font-black uppercase tracking-tight">{status}</span>
+                <div className="flex justify-between items-center">
+                  <span className="text-xs text-slate-500 font-bold uppercase">Modal Saat Ini</span>
+                  <span className="font-black text-primary">{formatCurrency(totalModalAkhir)}</span>
+                </div>
+                <Separator className="bg-slate-200" />
+                <div className="flex justify-between items-center">
+                  <div className="flex flex-col">
+                    <span className="text-[10px] text-slate-400 font-black uppercase">Selisih</span>
+                    <span className={`text-sm font-black ${statusColor}`}>{selisih >= 0 ? '+' : ''}{formatCurrency(selisih)}</span>
+                  </div>
+                  <div className={`flex items-center gap-1.5 px-3 py-1 rounded-full bg-white border border-slate-100 shadow-sm ${statusColor}`}>
+                    <StatusIcon className="h-3.5 w-3.5" />
+                    <span className="text-xs font-black uppercase tracking-tight">{status}</span>
+                  </div>
                 </div>
               </div>
-              <Button onClick={handleSaveHistory} className="w-full h-10 text-[10px] font-black uppercase bg-white text-primary border border-primary/20" variant="outline"><History className="h-3.5 w-3.5 mr-2" /> Simpan Riwayat</Button>
-              
-              <div className="pt-4 space-y-2">
+
+              {/* UPDATE TARGET MODAL - DIPINDAHKAN KE ATAS */}
+              <div className="pt-2 border-t border-slate-200/50 space-y-2">
                 <Label className="text-[10px] font-black text-slate-400 uppercase">Update Target</Label>
                 <div className="flex gap-2">
                   <input type="number" value={targetInput} onChange={(e) => setTargetInput(e.target.value)} className="h-9 w-full px-3 text-xs font-bold bg-white border border-slate-200 rounded-md" placeholder="0" />
@@ -241,9 +243,12 @@ export function LaporanDrawer({ products, warungId, warungName }: LaporanDrawerP
                 </div>
               </div>
 
+              {/* TOMBOL SIMPAN RIWAYAT - DIPINDAHKAN KE BAWAH UPDATE TARGET */}
+              <Button onClick={handleSaveHistory} className="w-full h-10 text-[10px] font-black uppercase bg-white text-primary border border-primary/20 hover:bg-slate-100 shadow-none" variant="outline"><History className="h-3.5 w-3.5 mr-2" /> Simpan Riwayat</Button>
+              
               {/* LIST RIWAYAT */}
               {sortedHistory.length > 0 && (
-                <div className="mt-6 space-y-3 border-t border-slate-200 pt-6">
+                <div className="mt-4 space-y-3 border-t border-slate-200 pt-6">
                   <h4 className="text-[9px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
                     <Clock className="h-2.5 w-2.5" /> 5 Riwayat Terakhir
                   </h4>
