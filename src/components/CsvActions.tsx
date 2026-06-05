@@ -55,9 +55,9 @@ export function CsvActions({ warungId }: CsvActionsProps) {
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.setAttribute("href", url);
-    link.setAttribute("download", `Backup_${warungId}_${new Date().toISOString().split('T')[0]}.csv`);
+    link.setAttribute("download", `Backup_Produk_${warungId}_${new Date().toISOString().split('T')[0]}.csv`);
     link.click();
-    toast({ title: "Berhasil", description: "Data berhasil diekspor ke CSV." });
+    toast({ title: "Berhasil", description: "Data produk berhasil diekspor." });
   };
 
   const handleImport = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -181,7 +181,7 @@ export function CsvActions({ warungId }: CsvActionsProps) {
         });
       } catch (error) {
         console.error("Import Error:", error);
-        toast({ variant: "destructive", title: "Gagal", description: "Format CSV tidak valid atau terjadi kesalahan sistem." });
+        toast({ variant: "destructive", title: "Gagal", description: "Format file tidak valid atau terjadi kesalahan sistem." });
       }
     };
     reader.readAsText(file);
@@ -190,8 +190,8 @@ export function CsvActions({ warungId }: CsvActionsProps) {
 
   return (
     <div className="grid grid-cols-2 gap-2 w-full">
-      <Button variant="outline" onClick={handleExport} className="h-9 bg-white text-primary font-bold text-[10px] gap-1.5"><Download className="h-3.5 w-3.5" /> EKSPOR CSV</Button>
-      <Button variant="outline" onClick={() => fileInputRef.current?.click()} className="h-9 bg-white text-primary font-bold text-[10px] gap-1.5"><Upload className="h-3.5 w-3.5" /> IMPOR CSV</Button>
+      <Button variant="outline" onClick={handleExport} className="h-9 bg-white text-primary font-bold text-[10px] gap-1.5"><Download className="h-3.5 w-3.5" /> EKSPOR PRODUK</Button>
+      <Button variant="outline" onClick={() => fileInputRef.current?.click()} className="h-9 bg-white text-primary font-bold text-[10px] gap-1.5"><Upload className="h-3.5 w-3.5" /> IMPOR PRODUK</Button>
       <input type="file" ref={fileInputRef} onChange={handleImport} accept=".csv" className="hidden" />
     </div>
   );
