@@ -167,9 +167,17 @@ export function CsvActions({ warungId }: CsvActionsProps) {
           }
         }
 
+        // Susun teks notifikasi
+        const lines_notif = [
+          `Ditambahkan: ${added}`,
+          `Diperbarui: ${updated}`,
+          `Dilewati: ${skipped}`
+        ];
+        if (failed > 0) lines_notif.push(`Gagal: ${failed}`);
+
         toast({ 
           title: "Import Selesai", 
-          description: `Berhasil: ${added} ditambahkan, ${updated} diperbarui. Gagal/Lewat: ${failed + skipped}.` 
+          description: lines_notif.join("\n") 
         });
       } catch (error) {
         console.error("Import Error:", error);
