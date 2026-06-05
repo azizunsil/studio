@@ -96,9 +96,42 @@ export const exportLaporanModalPdf = ({
     headStyles: { fillColor: [51, 65, 85] },
   });
 
-  // 5. DAFTAR PRODUK PER KATEGORI (Kecuali Titipan)
-  const regularCategories = ['Rokok', 'Sembako', 'Minuman', 'Sachet', 'Lainnya'];
+  // 5. RIWAYAT MODAL (Pindah ke posisi 4 dalam daftar PDF)
   currentY = (doc as any).lastAutoTable.finalY + 15;
+  if (modalHistory && modalHistory.length > 0) {
+    if (currentY > 240) {
+      doc.addPage();
+      currentY = 20;
+    }
+
+    doc.setFontSize(12);
+    doc.setTextColor(37, 99, 235);
+    doc.text("Riwayat Pengecekan Modal (5 Terakhir)", 14, currentY);
+    
+    const historyTableData = [...modalHistory]
+      .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0))
+      .slice(0, 5)
+      .map(h => [
+        format(new Date(h.tanggal), "dd/MM/yy HH:mm"),
+        formatCurrency(h.modalTarget),
+        formatCurrency(h.modalSaatIni),
+        `${h.selisih >= 0 ? '+' : ''}${formatCurrency(h.selisih)}`,
+        h.status
+      ]);
+
+    autoTable(doc, {
+      startY: currentY + 5,
+      head: [['Tanggal', 'Target', 'Modal Saat Ini', 'Selisih', 'Status']],
+      body: historyTableData,
+      headStyles: { fillColor: [100, 116, 139] },
+      styles: { fontSize: 9 },
+    });
+
+    currentY = (doc as any).lastAutoTable.finalY + 15;
+  }
+
+  // 6. DAFTAR PRODUK PER KATEGORI (Kecuali Titipan)
+  const regularCategories = ['Rokok', 'Sembako', 'Minuman', 'Sachet', 'Lainnya'];
 
   regularCategories.forEach(cat => {
     const catProducts = products.filter(p => p.kategori === cat);
@@ -133,14 +166,12 @@ export const exportLaporanModalPdf = ({
     }
   });
 
-  // 6. DETAIL BARANG TITIPAN
+  // 7. DETAIL BARANG TITIPAN (Tetap paling bawah)
   const titipanProducts = products.filter(p => p.kategori === 'Titipan');
   if (titipanProducts.length > 0) {
     if (currentY > 240) {
       doc.addPage();
       currentY = 20;
-    } else {
-      currentY = currentY;
     }
 
     doc.setFontSize(13);
@@ -175,39 +206,6 @@ export const exportLaporanModalPdf = ({
     doc.setFontSize(8);
     doc.setTextColor(100, 116, 139);
     doc.text("* Nilai titipan terjual bersifat sebagai pengurang modal.", 14, currentY + 5);
-    
-    currentY = currentY + 20;
-  }
-
-  // 7. RIWAYAT MODAL
-  if (modalHistory && modalHistory.length > 0) {
-    if (currentY > 240) {
-      doc.addPage();
-      currentY = 20;
-    }
-
-    doc.setFontSize(13);
-    doc.setTextColor(37, 99, 235);
-    doc.text("Riwayat Pengecekan Modal (5 Terakhir)", 14, currentY);
-    
-    const historyTableData = [...modalHistory]
-      .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0))
-      .slice(0, 5)
-      .map(h => [
-        format(new Date(h.tanggal), "dd/MM/yy HH:mm"),
-        formatCurrency(h.modalTarget),
-        formatCurrency(h.modalSaatIni),
-        `${h.selisih >= 0 ? '+' : ''}${formatCurrency(h.selisih)}`,
-        h.status
-      ]);
-
-    autoTable(doc, {
-      startY: currentY + 5,
-      head: [['Tanggal', 'Target', 'Modal Saat Ini', 'Selisih', 'Status']],
-      body: historyTableData,
-      headStyles: { fillColor: [100, 116, 139] },
-      styles: { fontSize: 9 },
-    });
   }
 
   // 8. FOOTER HALAMAN
