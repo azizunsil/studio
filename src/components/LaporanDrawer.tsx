@@ -1,7 +1,7 @@
 
 "use client"
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
@@ -10,10 +10,12 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Product, Category } from '@/lib/types';
 import { CsvActions } from '@/components/CsvActions';
-import { useDatabase, useDoc } from '@/firebase';
-import { ref, set } from 'firebase/database';
-import { Wallet, Target, ArrowRightLeft, TrendingUp, TrendingDown, CheckCircle2 } from 'lucide-react';
+import { useDatabase, useDoc, useCollection } from '@/firebase';
+import { ref, set, push, remove } from 'firebase/database';
+import { Wallet, Target, ArrowRightLeft, TrendingUp, TrendingDown, CheckCircle2, History, Trash2, Clock } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { format } from 'date-fns';
+import { id } from 'date-fns/locale';
 
 interface LaporanDrawerProps {
   products: Product[];
@@ -23,23 +25,26 @@ export function LaporanDrawer({ products }: LaporanDrawerProps) {
   const database = useDatabase();
   const { toast } = useToast();
   const { data: settingsData } = useDoc(database, 'settings');
+  const { data: historyData = [] } = useCollection(database, 'modalChecks');
   const [targetInput, setTargetInput] = useState<string>('');
   
   const modalTarget = (settingsData as any)?.modalTarget ?? 0;
 
   useEffect(() => {
-    // Sinkronkan input dengan data dari database saat data dimuat
     if (modalTarget !== undefined && modalTarget !== null) {
       setTargetInput(modalTarget.toString());
     }
   }, [modalTarget]);
 
+  const sortedHistory = useMemo(() => {
+    return [...historyData]
+      .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0))
+      .slice(0, 5);
+  }, [historyData]);
+
   const handleSaveTarget = () => {
     if (!database) return;
-    
     const val = parseFloat(targetInput) || 0;
-    
-    // Simpan langsung ke path spesifik settings/modalTarget
     const targetRef = ref(database, 'settings/modalTarget');
     
     set(targetRef, val)
@@ -53,9 +58,40 @@ export function LaporanDrawer({ products }: LaporanDrawerProps) {
         toast({
           variant: "destructive",
           title: "Gagal Simpan",
-          description: error.message || "Terjadi kesalahan saat menyimpan ke database.",
+          description: error.message,
         });
       });
+  };
+
+  const handleSaveHistory = () => {
+    if (!database) return;
+    
+    const historyRef = ref(database, 'modalChecks');
+    const payload = {
+      tanggal: Date.now(),
+      modalTarget,
+      modalSaatIni: totalModalAkhir,
+      selisih,
+      status,
+      totalStok,
+      totalJenisProduk: products.length,
+      createdAt: Date.now()
+    };
+
+    push(historyRef, payload).then(() => {
+      toast({
+        title: "Riwayat Disimpan",
+        description: "Hasil pengecekan modal telah dicatat ke riwayat.",
+      });
+    });
+  };
+
+  const handleDeleteHistory = (id: string) => {
+    if (!database) return;
+    if (confirm('Hapus catatan riwayat ini?')) {
+      const itemRef = ref(database, `modalChecks/${id}`);
+      remove(itemRef);
+    }
   };
 
   const formatCurrency = (val: number) => {
@@ -64,6 +100,10 @@ export function LaporanDrawer({ products }: LaporanDrawerProps) {
       currency: 'IDR',
       minimumFractionDigits: 0,
     }).format(val);
+  };
+
+  const formatDate = (timestamp: number) => {
+    return format(new Date(timestamp), 'dd MMM yyyy, HH:mm', { locale: id });
   };
 
   const categories: Category[] = ['Rokok', 'Sembako', 'Minuman', 'Sachet', 'Titipan', 'Lainnya'];
@@ -101,7 +141,6 @@ export function LaporanDrawer({ products }: LaporanDrawerProps) {
   const totalNilaiJual = products.reduce((acc, p) => acc + (p.hargaJual * p.stok), 0);
   const totalStok = products.reduce((acc, p) => acc + p.stok, 0);
 
-  // Perhitungan Cek Modal
   const selisih = totalModalAkhir - modalTarget;
   let status = 'Aman';
   let statusColor = 'text-blue-600';
@@ -117,6 +156,12 @@ export function LaporanDrawer({ products }: LaporanDrawerProps) {
     StatusIcon = TrendingDown;
   }
 
+  const getStatusColor = (statusName: string) => {
+    if (statusName === 'Surplus') return 'text-emerald-600 bg-emerald-50 border-emerald-100';
+    if (statusName === 'Kurang') return 'text-destructive bg-red-50 border-red-100';
+    return 'text-blue-600 bg-blue-50 border-blue-100';
+  };
+
   return (
     <SheetContent side="left" className="w-[85%] sm:w-[350px] p-0 border-r-0">
       <SheetHeader className="p-6 bg-primary text-white">
@@ -129,7 +174,6 @@ export function LaporanDrawer({ products }: LaporanDrawerProps) {
       <ScrollArea className="h-[calc(100vh-140px)] px-6 py-4">
         <div className="space-y-6 pb-20">
           
-          {/* RINGKASAN STOK */}
           <section>
             <h3 className="text-xs font-black text-muted-foreground uppercase tracking-widest mb-3 flex items-center gap-2">
               <div className="w-1.5 h-1.5 rounded-full bg-slate-400"></div>
@@ -154,7 +198,6 @@ export function LaporanDrawer({ products }: LaporanDrawerProps) {
             </div>
           </section>
 
-          {/* LAPORAN MODAL */}
           <section>
             <h3 className="text-xs font-black text-muted-foreground uppercase tracking-widest mb-3 flex items-center gap-2">
               <div className="w-1.5 h-1.5 rounded-full bg-primary"></div>
@@ -181,7 +224,6 @@ export function LaporanDrawer({ products }: LaporanDrawerProps) {
             </div>
           </section>
 
-          {/* NILAI INVENTARIS */}
           <section className="bg-slate-50 p-4 rounded-xl border border-slate-100">
             <h3 className="text-xs font-black text-muted-foreground uppercase tracking-widest mb-3">Nilai Inventaris</h3>
             <div className="space-y-2">
@@ -196,7 +238,6 @@ export function LaporanDrawer({ products }: LaporanDrawerProps) {
             </div>
           </section>
 
-          {/* CEK MODAL SECTION */}
           <section className="bg-slate-50 p-4 rounded-xl border border-slate-200 shadow-inner">
             <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-4 flex items-center gap-2">
               <Wallet className="h-3 w-3" />
@@ -228,6 +269,16 @@ export function LaporanDrawer({ products }: LaporanDrawerProps) {
                 </div>
               </div>
 
+              <div className="pt-2">
+                <Button 
+                  onClick={handleSaveHistory}
+                  className="w-full h-10 gap-2 text-[10px] font-black uppercase bg-white text-primary border border-primary/20 hover:bg-slate-100 shadow-none"
+                  variant="outline"
+                >
+                  <History className="h-3.5 w-3.5" /> Simpan Riwayat Cek
+                </Button>
+              </div>
+
               <div className="pt-4 space-y-2">
                 <Label htmlFor="modalTarget" className="text-[10px] font-black text-slate-400 uppercase">Update Target Modal</Label>
                 <div className="flex gap-2">
@@ -248,9 +299,45 @@ export function LaporanDrawer({ products }: LaporanDrawerProps) {
                 </div>
               </div>
             </div>
+
+            {/* DAFTAR RIWAYAT */}
+            {sortedHistory.length > 0 && (
+              <div className="mt-6 space-y-3">
+                <h4 className="text-[9px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
+                  <Clock className="h-2.5 w-2.5" /> 5 Riwayat Terakhir
+                </h4>
+                <div className="space-y-2">
+                  {sortedHistory.map((item: any) => (
+                    <div key={item.id} className="bg-white p-2.5 rounded-lg border border-slate-100 shadow-sm relative group">
+                      <div className="flex justify-between items-start mb-1">
+                        <span className="text-[9px] font-bold text-slate-400">{formatDate(item.tanggal)}</span>
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          className="h-5 w-5 text-slate-300 hover:text-destructive absolute top-1 right-1"
+                          onClick={() => handleDeleteHistory(item.id)}
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </Button>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <div className="flex flex-col">
+                          <span className="text-[10px] font-black text-slate-700">{formatCurrency(item.modalSaatIni)}</span>
+                          <span className={`text-[9px] font-bold ${item.selisih >= 0 ? 'text-emerald-600' : 'text-destructive'}`}>
+                            {item.selisih >= 0 ? '+' : ''}{formatCurrency(item.selisih)}
+                          </span>
+                        </div>
+                        <div className={`px-2 py-0.5 rounded-full border text-[8px] font-black uppercase ${getStatusColor(item.status)}`}>
+                          {item.status}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </section>
 
-          {/* TINDAKAN DATA */}
           <section>
             <h3 className="text-xs font-black text-muted-foreground uppercase tracking-widest mb-3">Cadangan Data</h3>
             <div className="pt-2">

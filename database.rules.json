@@ -8,6 +8,10 @@
     "settings": {
       ".read": "auth != null",
       ".write": "auth != null"
+    },
+    "modalChecks": {
+      ".read": "auth != null",
+      ".write": "auth != null"
     }
   }
 }
