@@ -10,10 +10,9 @@ import { Label } from '@/components/ui/label';
 import { Product, Category } from '@/lib/types';
 import { CsvActions } from '@/components/CsvActions';
 import { FullBackupActions } from '@/components/FullBackupActions';
-import { useDatabase, useDoc, useCollection, useAuth, useUser } from '@/firebase';
+import { useDatabase, useDoc, useCollection } from '@/firebase';
 import { ref, set, push, remove } from 'firebase/database';
-import { signInWithRedirect, GoogleAuthProvider, signOut } from 'firebase/auth';
-import { Wallet, Target, ArrowRightLeft, TrendingUp, TrendingDown, CheckCircle2, History, Trash2, Clock, FileText, Lock, LogIn, LogOut, UserCheck, Bug } from 'lucide-react';
+import { Wallet, Target, ArrowRightLeft, TrendingUp, TrendingDown, CheckCircle2, History, Trash2, Clock, FileText, Package } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { id } from 'date-fns/locale';
@@ -23,22 +22,14 @@ interface LaporanDrawerProps {
   products: Product[];
 }
 
-// KONSTANTA ADMIN UID - Isi dengan UID yang tampil di panel debug nanti
-const ADMIN_UID = "ISI_NANTI_DENGAN_UID_AKUN_GOOGLE_ADMIN";
-
 export function LaporanDrawer({ products }: LaporanDrawerProps) {
   const database = useDatabase();
-  const auth = useAuth();
-  const { user } = useUser(auth);
   const { toast } = useToast();
   const { data: settingsData } = useDoc(database, 'settings');
   const { data: historyData = [] } = useCollection(database, 'modalChecks');
   const [targetInput, setTargetInput] = useState<string>('');
   
   const modalTarget = (settingsData as any)?.modalTarget ?? 0;
-
-  // LOGIK ADMIN BERDASARKAN UID DAN BUKAN ANONIM
-  const isAdmin = user?.uid === ADMIN_UID && user?.isAnonymous === false;
 
   useEffect(() => {
     if (modalTarget !== undefined && modalTarget !== null) {
@@ -101,30 +92,6 @@ export function LaporanDrawer({ products }: LaporanDrawerProps) {
     if (confirm('Hapus catatan riwayat ini?')) {
       const itemRef = ref(database, `modalChecks/${id}`);
       remove(itemRef);
-    }
-  };
-
-  const handleAdminLogin = async () => {
-    const provider = new GoogleAuthProvider();
-    provider.setCustomParameters({ prompt: 'select_account' });
-    
-    try {
-      await signInWithRedirect(auth, provider);
-    } catch (error: any) {
-      toast({ 
-        variant: "destructive", 
-        title: "Login Gagal", 
-        description: error.message 
-      });
-    }
-  };
-
-  const handleLogout = async () => {
-    try {
-      await signOut(auth);
-      toast({ title: "Logout Berhasil", description: "Anda telah keluar dari Panel Admin." });
-    } catch (error: any) {
-      toast({ variant: "destructive", title: "Logout Gagal", description: error.message });
     }
   };
 
@@ -231,7 +198,7 @@ export function LaporanDrawer({ products }: LaporanDrawerProps) {
         </SheetDescription>
       </SheetHeader>
       
-      <ScrollArea className="h-[calc(100vh-140px)] px-6 py-4">
+      <ScrollArea className="h-[calc(100vh-80px)] px-6 py-4">
         <div className="space-y-6 pb-20">
           
           <section>
@@ -360,7 +327,6 @@ export function LaporanDrawer({ products }: LaporanDrawerProps) {
               </div>
             </div>
 
-            {/* DAFTAR RIWAYAT */}
             {sortedHistory.length > 0 && (
               <div className="mt-6 space-y-3">
                 <h4 className="text-[9px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
@@ -398,8 +364,8 @@ export function LaporanDrawer({ products }: LaporanDrawerProps) {
             )}
           </section>
 
-          <section className="space-y-4">
-            <div className="bg-blue-50/50 p-4 rounded-xl border border-blue-100 mb-4">
+          <section className="space-y-6">
+            <div className="bg-blue-50/50 p-4 rounded-xl border border-blue-100">
               <h3 className="text-xs font-black text-blue-600 uppercase tracking-widest mb-3 flex items-center gap-2">
                 <FileText className="h-3.5 w-3.5" /> Ekspor Dokumen
               </h3>
@@ -412,74 +378,20 @@ export function LaporanDrawer({ products }: LaporanDrawerProps) {
               </Button>
             </div>
 
-            {isAdmin && (
-              <>
-                <div>
-                  <h3 className="text-xs font-black text-muted-foreground uppercase tracking-widest mb-3">Cadangan Data Produk</h3>
-                  <div className="pt-1">
-                    <CsvActions />
-                  </div>
-                </div>
-                
-                <Separator className="opacity-50" />
-
-                <div>
-                  <h3 className="text-xs font-black text-muted-foreground uppercase tracking-widest mb-3">Backup Lengkap (Semua Data)</h3>
-                  <div className="pt-1">
-                    <FullBackupActions />
-                  </div>
-                </div>
-              </>
-            )}
-
-            {!isAdmin && (
-              <div className="bg-slate-100 p-4 rounded-xl border border-dashed border-slate-300">
-                <p className="text-[10px] font-bold text-slate-400 text-center uppercase flex items-center justify-center gap-2">
-                  <Lock className="h-3 w-3" /> Fitur Backup Terkunci
-                </p>
+            <div>
+              <h3 className="text-xs font-black text-muted-foreground uppercase tracking-widest mb-3">Cadangan Data Produk</h3>
+              <div className="pt-1">
+                <CsvActions />
               </div>
-            )}
-          </section>
+            </div>
+            
+            <Separator className="opacity-50" />
 
-          <Separator className="my-6 opacity-50" />
-          
-          <section className="pt-2">
-            {!user || user.isAnonymous ? (
-              <Button 
-                onClick={handleAdminLogin}
-                className="w-full h-10 gap-2 text-[10px] font-black uppercase bg-slate-800 hover:bg-slate-900 text-white shadow-lg shadow-slate-200"
-              >
-                <LogIn className="h-3.5 w-3.5" /> Login Admin (Google)
-              </Button>
-            ) : (
-              <div className="space-y-3">
-                <div className="flex items-center justify-center gap-2 bg-emerald-50 p-3 rounded-lg border border-emerald-100">
-                  <UserCheck className="h-4 w-4 text-emerald-600" />
-                  <div className="flex flex-col">
-                    <span className="text-[9px] font-black text-emerald-700 uppercase leading-none">Admin Aktif</span>
-                    <span className="text-[10px] font-bold text-emerald-600 truncate max-w-[150px]">{user.email}</span>
-                  </div>
-                </div>
-                <Button 
-                  onClick={handleLogout}
-                  variant="outline"
-                  className="w-full h-10 gap-2 text-[10px] font-black uppercase text-slate-500 border-slate-200"
-                >
-                  <LogOut className="h-3.5 w-3.5" /> Logout Admin
-                </Button>
+            <div>
+              <h3 className="text-xs font-black text-muted-foreground uppercase tracking-widest mb-3">Backup Lengkap (Semua Data)</h3>
+              <div className="pt-1">
+                <FullBackupActions />
               </div>
-            )}
-
-            {/* DEBUG PANEL - SEMENTARA */}
-            <div className="mt-8 p-4 bg-slate-900 text-white rounded-xl text-[10px] font-mono break-all space-y-1 border-t-4 border-amber-500">
-              <div className="flex items-center gap-2 text-amber-400 uppercase font-black mb-2">
-                <Bug className="h-3 w-3" /> Debug User Info
-              </div>
-              <p><span className="text-slate-500">Email:</span> {user?.email || 'N/A'}</p>
-              <p><span className="text-slate-500">UID:</span> <span className="text-blue-400">{user?.uid || 'N/A'}</span></p>
-              <p><span className="text-slate-500">Anon:</span> <span className={user?.isAnonymous ? 'text-amber-400' : 'text-emerald-400'}>{user?.isAnonymous ? 'Ya' : 'Tidak'}</span></p>
-              <p><span className="text-slate-500">Admin:</span> <span className={isAdmin ? 'text-emerald-400' : 'text-red-400'}>{isAdmin ? 'Ya' : 'Tidak'}</span></p>
-              <p><span className="text-slate-500">Provider:</span> {user?.providerData.map(p => p.providerId).join(', ') || 'N/A'}</p>
             </div>
           </section>
         </div>
