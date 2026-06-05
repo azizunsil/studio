@@ -15,18 +15,21 @@ export function FullBackupActions() {
   const handleBackup = async () => {
     if (!database) return;
     try {
-      // Ambil seluruh data root untuk mencakup products, settings, dan modalChecks
-      const snapshot = await get(ref(database));
-      const allData = snapshot.val() || {};
+      // Mengambil data satu per satu dari path yang diizinkan untuk mematuhi Security Rules
+      const [productsSnap, settingsSnap, modalChecksSnap] = await Promise.all([
+        get(ref(database, 'products')),
+        get(ref(database, 'settings')),
+        get(ref(database, 'modalChecks'))
+      ]);
 
       const backupData = {
         app: "Oya Apps / Barang & Roris",
         version: 1,
         exportedAt: new Date().toISOString(),
         data: {
-          products: allData.products || {},
-          settings: allData.settings || {},
-          modalChecks: allData.modalChecks || {}
+          products: productsSnap.val() || {},
+          settings: settingsSnap.val() || {},
+          modalChecks: modalChecksSnap.val() || {}
         }
       };
 
@@ -43,7 +46,8 @@ export function FullBackupActions() {
       
       toast({ title: "Berhasil", description: "Backup JSON berhasil diunduh." });
     } catch (error: any) {
-      toast({ variant: "destructive", title: "Gagal", description: error.message });
+      console.error("Backup Error:", error);
+      toast({ variant: "destructive", title: "Gagal", description: error.message || "Gagal mengambil data dari database." });
     }
   };
 
@@ -66,15 +70,19 @@ export function FullBackupActions() {
         }
 
         // Restore masing-masing node jika ada di file backup
+        const restorePromises = [];
+        
         if (backup.data.products) {
-          await set(ref(database, 'products'), backup.data.products);
+          restorePromises.push(set(ref(database, 'products'), backup.data.products));
         }
         if (backup.data.settings) {
-          await set(ref(database, 'settings'), backup.data.settings);
+          restorePromises.push(set(ref(database, 'settings'), backup.data.settings));
         }
         if (backup.data.modalChecks) {
-          await set(ref(database, 'modalChecks'), backup.data.modalChecks);
+          restorePromises.push(set(ref(database, 'modalChecks'), backup.data.modalChecks));
         }
+
+        await Promise.all(restorePromises);
 
         toast({ title: "Berhasil", description: "Seluruh data berhasil dipulihkan dari file JSON." });
       } catch (error: any) {
@@ -87,7 +95,6 @@ export function FullBackupActions() {
       }
     };
     reader.readAsText(file);
-    // Reset input agar bisa upload file yang sama jika perlu
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
