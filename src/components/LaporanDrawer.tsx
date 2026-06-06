@@ -1,3 +1,4 @@
+
 "use client"
 
 import React, { useState, useEffect, useMemo } from 'react';
@@ -8,12 +9,12 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Product, Category } from '@/lib/types';
-import { BACKUP_PIN } from '@/lib/constants';
+import { BACKUP_PIN, STOCK_OPNAME_PIN } from '@/lib/constants';
 import { CsvActions } from '@/components/CsvActions';
 import { FullBackupActions } from '@/components/FullBackupActions';
 import { useDatabase, useDoc, useCollection } from '@/firebase';
-import { ref, set, push, remove } from 'firebase/database';
-import { Wallet, CheckCircle2, History, Trash2, Clock, FileText, Lock, TrendingUp, TrendingDown, Package, Database } from 'lucide-react';
+import { ref, set, push, remove, update } from 'firebase/database';
+import { Wallet, CheckCircle2, History, Trash2, Clock, FileText, Lock, TrendingUp, TrendingDown, Package, Database, Power, ShieldCheck } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { id } from 'date-fns/locale';
@@ -36,6 +37,7 @@ export function LaporanDrawer({ products, warungId, warungName }: LaporanDrawerP
   const [isBackupUnlocked, setIsBackupUnlocked] = useState(false);
   
   const modalTarget = (settingsData as any)?.modalTarget ?? 0;
+  const isStockOpnameMode = (settingsData as any)?.stockOpnameMode === true;
 
   useEffect(() => {
     if (modalTarget !== undefined && modalTarget !== null) {
@@ -59,6 +61,31 @@ export function LaporanDrawer({ products, warungId, warungName }: LaporanDrawerP
       alert("PIN BACKUP Salah!");
     }
     return false;
+  };
+
+  const handleToggleStockOpname = () => {
+    if (!database) return;
+    
+    const pin = prompt(`Masukkan PIN STOCK OPNAME untuk ${isStockOpnameMode ? 'menonaktifkan' : 'mengaktifkan'} mode edit stok:`);
+    if (pin === null) return;
+
+    if (pin === STOCK_OPNAME_PIN) {
+      const settingsRef = ref(database, `warungs/${warungId}/settings`);
+      const newStatus = !isStockOpnameMode;
+
+      if (!newStatus) {
+        if (!confirm('Yakin ingin menonaktifkan Mode Stock Opname? Edit stok akan kembali terkunci.')) return;
+      }
+
+      update(settingsRef, { stockOpnameMode: newStatus }).then(() => {
+        toast({ 
+          title: newStatus ? "Mode Opname Aktif" : "Mode Normal Aktif", 
+          description: newStatus ? "Sekarang stok barang dapat diubah secara cepat." : "Edit stok telah dikunci kembali." 
+        });
+      });
+    } else {
+      alert("PIN Stock Opname Salah!");
+    }
   };
 
   const handleSaveTarget = () => {
@@ -145,7 +172,30 @@ export function LaporanDrawer({ products, warungId, warungName }: LaporanDrawerP
       
       <ScrollArea className="h-[calc(100vh-140px)] px-6 py-4">
         <div className="space-y-6 pb-24">
-          {/* 1. INFORMASI STOK */}
+          {/* 1. KONTROL ADMIN & MODE OPNAME */}
+          <section className="bg-blue-50 p-4 rounded-xl border border-blue-100">
+            <h3 className="text-[10px] font-black text-blue-600 uppercase tracking-widest mb-3 flex items-center gap-2">
+              <ShieldCheck className="h-3 w-3" /> Kontrol Admin Toko
+            </h3>
+            <div className="space-y-3">
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-[11px] font-bold text-slate-600">Mode Stock Opname</span>
+                <Badge variant={isStockOpnameMode ? "default" : "secondary"} className={`text-[8px] font-black uppercase ${isStockOpnameMode ? 'bg-emerald-500' : 'bg-slate-200 text-slate-500'}`}>
+                  {isStockOpnameMode ? 'AKTIF' : 'MATI'}
+                </Badge>
+              </div>
+              <Button 
+                onClick={handleToggleStockOpname} 
+                className={`w-full h-11 text-[11px] font-black uppercase gap-2 shadow-sm ${isStockOpnameMode ? 'bg-amber-500 hover:bg-amber-600' : 'bg-primary'}`}
+              >
+                <Power className="h-4 w-4" />
+                {isStockOpnameMode ? 'Nonaktifkan Mode Opname' : 'Aktifkan Mode Opname'}
+              </Button>
+              <p className="text-[9px] text-slate-400 font-medium text-center">Memerlukan PIN Stock Opname untuk mengubah status.</p>
+            </div>
+          </section>
+
+          {/* 2. INFORMASI STOK */}
           <section>
             <h3 className="text-xs font-black text-muted-foreground uppercase tracking-widest mb-3 flex items-center gap-2">
               <div className="w-1.5 h-1.5 rounded-full bg-slate-400"></div> Informasi Stok
@@ -165,7 +215,7 @@ export function LaporanDrawer({ products, warungId, warungName }: LaporanDrawerP
             </div>
           </section>
 
-          {/* 2. RINCIAN MODAL STOK */}
+          {/* 3. RINCIAN MODAL STOK */}
           <section>
             <h3 className="text-xs font-black text-muted-foreground uppercase tracking-widest mb-3 flex items-center gap-2">
               <div className="w-1.5 h-1.5 rounded-full bg-primary"></div> Rincian Modal Stok
@@ -185,21 +235,6 @@ export function LaporanDrawer({ products, warungId, warungName }: LaporanDrawerP
               <div className="flex justify-between font-black text-primary text-base">
                 <span>Total Modal Net</span>
                 <span>{formatCurrency(totalModalAkhir)}</span>
-              </div>
-            </div>
-          </section>
-
-          {/* 3. NILAI INVENTARIS */}
-          <section className="bg-slate-50 p-4 rounded-xl border border-slate-100">
-            <h3 className="text-xs font-black text-muted-foreground uppercase tracking-widest mb-3">Nilai Inventaris</h3>
-            <div className="space-y-2">
-              <div className="flex justify-between text-sm">
-                <span className="text-slate-500">Total Modal</span>
-                <span className="font-bold">{formatCurrency(totalModalAkhir)}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-slate-500">Total Nilai Jual</span>
-                <span className="font-bold">{formatCurrency(totalNilaiJual)}</span>
               </div>
             </div>
           </section>
@@ -238,6 +273,8 @@ export function LaporanDrawer({ products, warungId, warungName }: LaporanDrawerP
                   <Button onClick={handleSaveTarget} className="h-9 px-3 text-[10px] font-black uppercase">Simpan</Button>
                 </div>
               </div>
+
+              <Separator className="bg-slate-200/50" />
 
               {/* TOMBOL SIMPAN RIWAYAT */}
               <Button onClick={handleSaveHistory} className="w-full h-10 text-[10px] font-black uppercase bg-white text-primary border border-primary/20 hover:bg-slate-100 shadow-none" variant="outline"><History className="h-3.5 w-3.5 mr-2" /> Simpan Riwayat</Button>

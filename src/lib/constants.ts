@@ -19,7 +19,8 @@ export const WARUNG_LIST: Warung[] = [
 ];
 
 /**
- * PIN BACKUP GLOBAL
- * Digunakan untuk fitur: Ekspor PRODUK, Impor PRODUK, Backup JSON, Restore JSON.
+ * PIN KHUSUS FITUR
  */
 export const BACKUP_PIN = "9999"; 
+export const STOCK_OPNAME_PIN = "5555";
+export const DELETE_PRODUCT_PIN = "8888";

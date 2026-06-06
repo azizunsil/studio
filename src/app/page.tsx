@@ -2,9 +2,9 @@
 "use client"
 
 import React, { useState, useMemo, useEffect } from 'react';
-import { Search, Plus, Edit2, Package, Store, MoreVertical, Loader2, AlertCircle, Clock, ArrowUpDown, LogOut, Lock, ChevronDown } from 'lucide-react';
+import { Search, Plus, Edit2, Package, Store, MoreVertical, Loader2, AlertCircle, Clock, ArrowUpDown, LogOut, Lock, ChevronDown, CheckCircle2, ShieldAlert } from 'lucide-react';
 import { Product, Warung } from '@/lib/types';
-import { WARUNG_LIST } from '@/lib/constants';
+import { WARUNG_LIST, DELETE_PRODUCT_PIN } from '@/lib/constants';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -12,7 +12,7 @@ import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, Dialog
 import { Sheet, SheetTrigger, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { ProductForm } from '@/components/ProductForm';
 import { LaporanDrawer } from '@/components/LaporanDrawer';
-import { useCollection, useDatabase, useAuth, useUser } from '@/firebase';
+import { useCollection, useDatabase, useAuth, useUser, useDoc } from '@/firebase';
 import { ref, remove, update } from 'firebase/database';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -25,19 +25,14 @@ import { id } from 'date-fns/locale';
 import Image from 'next/image';
 
 export default function Home() {
-  // State untuk Input Pencarian (Langsung)
   const [searchInput, setSearchInput] = useState('');
-  // State untuk Pencarian Ter-debounce (Digunakan untuk Filter)
   const [debouncedSearch, setDebouncedSearch] = useState('');
-  
   const [selectedCategory, setSelectedCategory] = useState<string>('Semua');
   const [sortBy, setSortBy] = useState<string>('A-Z');
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [openSheetId, setOpenSheetId] = useState<string | null>(null);
-  
-  // State untuk Pagination
   const [displayLimit, setDisplayLimit] = useState(50);
   
   const [quickStockProduct, setQuickStockProduct] = useState<Product | null>(null);
@@ -59,11 +54,10 @@ export default function Home() {
   const auth = useAuth();
   const { user, loading: authLoading } = useUser(auth);
 
-  // Efek Debounce untuk Pencarian
   useEffect(() => {
     const handler = setTimeout(() => {
       setDebouncedSearch(searchInput);
-      setDisplayLimit(50); // Reset limit saat mencari
+      setDisplayLimit(50);
     }, 300);
     return () => clearTimeout(handler);
   }, [searchInput]);
@@ -87,7 +81,11 @@ export default function Home() {
   }, []);
 
   const warungPath = activeWarung ? `warungs/${activeWarung.id}/products` : '';
+  const settingsPath = activeWarung ? `warungs/${activeWarung.id}/settings` : null;
   const { data: rawProducts = [], loading: dataLoading, error: dbError } = useCollection<Product>(database, warungPath);
+  const { data: settingsData } = useDoc(database, settingsPath);
+  
+  const isStockOpnameMode = (settingsData as any)?.stockOpnameMode === true;
 
   const categories = ['Semua', 'Rokok', 'Sembako', 'Minuman', 'Sachet', 'Titipan', 'Lainnya'];
 
@@ -99,7 +97,6 @@ export default function Home() {
       return matchSearch && matchCat;
     });
 
-    // Helper untuk mendeteksi produk eceran
     const isEceranProduct = (p: Product) => {
       const name = (p.namaBarang || '').toLowerCase();
       return name.includes('ecer') || name.includes('eceran');
@@ -110,13 +107,7 @@ export default function Home() {
         result.sort((a, b) => {
           const aEcer = isEceranProduct(a);
           const bEcer = isEceranProduct(b);
-          
-          // Jika satu eceran dan satu tidak, prioritaskan non-eceran ke atas
-          if (aEcer !== bEcer) {
-            return aEcer ? 1 : -1;
-          }
-          
-          // Jika keduanya sama-sama eceran atau sama-sama packs, urutkan alfabetis
+          if (aEcer !== bEcer) return aEcer ? 1 : -1;
           return (a.namaBarang || '').localeCompare(b.namaBarang || '');
         });
         break;
@@ -145,7 +136,6 @@ export default function Home() {
     return result;
   }, [rawProducts, debouncedSearch, selectedCategory, sortBy]);
 
-  // Produk yang benar-benar ditampilkan (Sesuai Limit)
   const paginatedProducts = useMemo(() => {
     return filteredAndSortedProducts.slice(0, displayLimit);
   }, [filteredAndSortedProducts, displayLimit]);
@@ -181,9 +171,21 @@ export default function Home() {
 
   const handleDelete = (id: string) => {
     if (!database || !activeWarung) return false;
-    if (confirm('Hapus barang ini?')) {
+    
+    const pin = prompt("Masukkan PIN HAPUS PRODUK untuk menghapus barang ini:");
+    if (pin === null) return false;
+    
+    if (pin !== DELETE_PRODUCT_PIN) {
+      alert("PIN Hapus Salah!");
+      return false;
+    }
+
+    if (confirm('Yakin hapus produk ini permanen?')) {
       const itemRef = ref(database, `warungs/${activeWarung.id}/products/${id}`);
-      remove(itemRef).catch((err) => {
+      remove(itemRef).then(() => {
+        toast({ title: "Dihapus", description: "Barang berhasil dihapus permanen." });
+        setOpenSheetId(null);
+      }).catch((err) => {
         console.error("Delete Error:", err);
       });
       return true;
@@ -338,6 +340,21 @@ export default function Home() {
         </div>
         
         <div className="px-4 flex flex-col gap-2">
+          {/* Status Mode Stock Opname */}
+          <div className={`px-3 py-1.5 rounded-lg flex items-center gap-2 border ${isStockOpnameMode ? 'bg-emerald-50 border-emerald-100' : 'bg-slate-50 border-slate-100'}`}>
+            {isStockOpnameMode ? (
+              <>
+                <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
+                <span className="text-[10px] font-black text-emerald-700 uppercase tracking-tight">Mode Stock Opname Aktif - Edit stok dibuka</span>
+              </>
+            ) : (
+              <>
+                <Lock className="h-3.5 w-3.5 text-slate-400" />
+                <span className="text-[10px] font-black text-slate-500 uppercase tracking-tight">Mode Normal - Edit stok terkunci</span>
+              </>
+            )}
+          </div>
+
           <div className="relative w-full">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground z-10" />
             <Input 
@@ -440,18 +457,22 @@ export default function Home() {
                           <p className="text-xs font-bold text-slate-600">{formatCurrency(product.modal)}</p>
                         </div>
                         <div 
-                          className="cursor-pointer group/stok"
+                          className={`group/stok ${isStockOpnameMode ? 'cursor-pointer' : 'cursor-not-allowed'}`}
                           onClick={(e) => {
                             e.stopPropagation();
+                            if (!isStockOpnameMode) {
+                              toast({ variant: "destructive", title: "Akses Terkunci", description: "Aktifkan Mode Stock Opname di menu laporan untuk edit stok." });
+                              return;
+                            }
                             setQuickStockProduct(product);
                             setNewStokInput(product.stok.toString());
                             setIsQuickStockOpen(true);
                           }}
                         >
-                          <p className="text-[10px] text-slate-400 font-bold uppercase flex items-center gap-1 group-hover/stok:text-primary transition-colors">
-                            Stok <Edit2 className="h-2 w-2 opacity-40" />
+                          <p className={`text-[10px] font-bold uppercase flex items-center gap-1 transition-colors ${isStockOpnameMode ? 'text-slate-400 group-hover/stok:text-primary' : 'text-slate-300'}`}>
+                            Stok {isStockOpnameMode ? <Edit2 className="h-2 w-2 opacity-40" /> : <Lock className="h-2 w-2 opacity-30" />}
                           </p>
-                          <p className="text-sm font-bold text-slate-800 border-b border-dashed border-slate-200 group-hover/stok:border-primary/50 transition-colors inline-block">
+                          <p className={`text-sm font-bold text-slate-800 border-b border-dashed transition-colors inline-block ${isStockOpnameMode ? 'border-slate-200 group-hover/stok:border-primary/50' : 'border-transparent'}`}>
                             <span className={product.stok < 5 ? 'text-destructive font-black' : ''}>{product.stok}</span>
                             {product.kategori === 'Titipan' && product.stokAwalTitipan && (
                               <span className="text-[10px] text-slate-400 ml-1 font-medium">(dari {product.stokAwalTitipan})</span>
@@ -504,9 +525,7 @@ export default function Home() {
                               variant="destructive" 
                               className="w-full h-14 justify-start gap-4 text-base font-bold"
                               onClick={() => {
-                                if (handleDelete(product.id)) {
-                                  setOpenSheetId(null);
-                                }
+                                handleDelete(product.id);
                               }}
                             >
                               <div className="bg-red-100/20 p-2 rounded-lg">
@@ -523,7 +542,6 @@ export default function Home() {
               </Card>
             ))}
 
-            {/* Tombol Load More */}
             {filteredAndSortedProducts.length > displayLimit && (
               <div className="py-4 text-center">
                 <Button 
