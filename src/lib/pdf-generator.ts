@@ -67,7 +67,7 @@ export const exportLaporanModalPdf = ({
   // 3. RINGKASAN MODAL & INVENTARIS
   doc.setFontSize(12);
   doc.setTextColor(30, 41, 59);
-  doc.text("Ringkasan Modal & Inventaris", 14, 40);
+  doc.text("Ringkasan Hasil Roris", 14, 40);
 
   const summaryData = [
     ["Total Jenis Produk", `${products.length} jenis`],
@@ -75,7 +75,7 @@ export const exportLaporanModalPdf = ({
     ["Total Modal Barang", formatCurrency(totalModalAkhir)],
     ["Target Modal Toko", formatCurrency(modalTarget)],
     ["Ralat Modal Bersih", formatCurrency(ralatBersih, true)],
-    ["Tanggungan Roris", formatCurrency(rorisLiability * -1, false)], // Ditampilkan sebagai pengurang
+    ["Tanggungan Roris", formatCurrency(rorisLiability, false)],
     ["Selisih Akhir", formatCurrency(selisih, true)],
     ["Status Roris", status.toUpperCase()],
   ];
@@ -149,40 +149,10 @@ export const exportLaporanModalPdf = ({
     (doc as any).lastAutoTable = { finalY: currentY + 10 };
   }
 
-  // 6. RIWAYAT MODAL
-  currentY = (doc as any).lastAutoTable.finalY + 15;
-  if (modalHistory && modalHistory.length > 0) {
-    if (currentY > 240) { doc.addPage(); currentY = 20; }
-
-    doc.setFontSize(12);
-    doc.setTextColor(37, 99, 235);
-    doc.text("Riwayat Pengecekan Modal (5 Terakhir)", 14, currentY);
-    
-    const historyTableData = [...modalHistory]
-      .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0))
-      .slice(0, 5)
-      .map(h => [
-        format(new Date(h.tanggal), "dd/MM/yy HH:mm"),
-        formatCurrency(h.modalTarget),
-        formatCurrency(h.modalSaatIni),
-        formatCurrency(h.selisih, true),
-        h.status.toUpperCase()
-      ]);
-
-    autoTable(doc, {
-      startY: currentY + 5,
-      head: [['Tanggal', 'Target', 'Modal Barang', 'Selisih', 'Status']],
-      body: historyTableData,
-      headStyles: { fillColor: [100, 116, 139] },
-      styles: { fontSize: 9 },
-    });
-
-    currentY = (doc as any).lastAutoTable.finalY + 15;
-  }
-
-  // 7. DETAIL BARANG TITIPAN
+  // 6. DETAIL BARANG TITIPAN
   const titipanProducts = products.filter(p => p.kategori === 'Titipan');
   if (titipanProducts.length > 0) {
+    currentY = (doc as any).lastAutoTable.finalY + 15;
     if (currentY > 240) { doc.addPage(); currentY = 20; }
 
     doc.setFontSize(12);
@@ -209,12 +179,46 @@ export const exportLaporanModalPdf = ({
       headStyles: { fillColor: [2, 132, 199] },
       styles: { fontSize: 9 },
     });
-
-    currentY = (doc as any).lastAutoTable.finalY + 10;
-    doc.setFontSize(10);
-    doc.setTextColor(30, 41, 59);
-    doc.text(`Total Nilai Titipan Terjual: ${formatCurrency(totalNilaiTitipanTerjual)}`, 14, currentY);
   }
+
+  // 7. DAFTAR LENGKAP PRODUK
+  currentY = (doc as any).lastAutoTable.finalY + 15;
+  if (currentY > 240) { doc.addPage(); currentY = 20; }
+  
+  doc.setFontSize(12);
+  doc.setTextColor(37, 99, 235);
+  doc.text("Daftar Lengkap Barang", 14, currentY);
+
+  const fullProductList = [...products].sort((a, b) => {
+    if (a.kategori !== b.kategori) return a.kategori.localeCompare(b.kategori);
+    return a.namaBarang.localeCompare(b.namaBarang);
+  });
+
+  const fullProductTableData = fullProductList.map((p, index) => [
+    index + 1,
+    p.namaBarang,
+    p.kategori,
+    p.stok,
+    formatCurrency(p.modal),
+    formatCurrency(p.hargaJual),
+    formatCurrency(p.stok * p.modal)
+  ]);
+
+  autoTable(doc, {
+    startY: currentY + 5,
+    head: [['No', 'Nama Barang', 'Kategori', 'Stok', 'Modal', 'Jual', 'Total']],
+    body: fullProductTableData,
+    headStyles: { fillColor: [51, 65, 85] },
+    styles: { fontSize: 8 },
+    columnStyles: { 
+      0: { cellWidth: 10 },
+      2: { cellWidth: 20 },
+      3: { cellWidth: 15 },
+      4: { cellWidth: 25 },
+      5: { cellWidth: 25 },
+      6: { cellWidth: 25 }
+    },
+  });
 
   // 8. FOOTER HALAMAN
   const pageCount = (doc as any).internal.getNumberOfPages();
