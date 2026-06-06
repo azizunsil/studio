@@ -1,3 +1,4 @@
+
 "use client"
 
 import React, { useState, useMemo, useEffect } from 'react';
@@ -35,6 +36,10 @@ export default function Home() {
   const [quickStockProduct, setQuickStockProduct] = useState<Product | null>(null);
   const [isQuickStockOpen, setIsQuickStockOpen] = useState(false);
   const [newStokInput, setNewStokInput] = useState('');
+
+  const [quickPriceProduct, setQuickPriceProduct] = useState<Product | null>(null);
+  const [isQuickPriceOpen, setIsQuickPriceOpen] = useState(false);
+  const [newPriceInput, setNewPriceInput] = useState('');
 
   const [activeWarung, setActiveWarung] = useState<Warung | null>(null);
   const [showPinDialog, setShowPinDialog] = useState(false);
@@ -158,6 +163,23 @@ export default function Home() {
     }).then(() => {
       toast({ title: "Stok Diperbarui", description: `Stok ${quickStockProduct.namaBarang} sekarang ${stokNum}.` });
       setIsQuickStockOpen(false);
+    });
+  };
+
+  const handleQuickUpdatePrice = () => {
+    if (!database || !quickPriceProduct || !activeWarung) return;
+    const priceNum = parseInt(newPriceInput);
+    if (isNaN(priceNum) || priceNum < 0) {
+      toast({ variant: "destructive", title: "Input Tidak Valid", description: "Harga harus berupa angka positif." });
+      return;
+    }
+
+    const itemRef = ref(database, `warungs/${activeWarung.id}/products/${quickPriceProduct.id}`);
+    update(itemRef, {
+      hargaJual: priceNum
+    }).then(() => {
+      toast({ title: "Harga Diperbarui", description: `Harga ${quickPriceProduct.namaBarang} sekarang ${formatCurrency(priceNum)}.` });
+      setIsQuickPriceOpen(false);
     });
   };
 
@@ -356,9 +378,19 @@ export default function Home() {
                       </div>
                       
                       <div className="grid grid-cols-2 gap-y-2 mb-2">
-                        <div>
-                          <p className="text-[10px] text-slate-400 font-bold uppercase">Harga Jual</p>
-                          <p className="text-base font-black text-primary leading-tight">{formatCurrency(product.hargaJual)}</p>
+                        <div 
+                          className="cursor-pointer group/harga"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setQuickPriceProduct(product);
+                            setNewPriceInput(product.hargaJual.toString());
+                            setIsQuickPriceOpen(true);
+                          }}
+                        >
+                          <p className="text-[10px] text-slate-400 font-bold uppercase flex items-center gap-1 group-hover/harga:text-primary transition-colors">
+                            Harga Jual <Edit2 className="h-2 w-2 opacity-40" />
+                          </p>
+                          <p className="text-base font-black text-primary leading-tight border-b border-dashed border-transparent group-hover/harga:border-primary/50 transition-colors inline-block">{formatCurrency(product.hargaJual)}</p>
                         </div>
                         <div>
                           <p className="text-[10px] text-slate-400 font-bold uppercase">Modal</p>
@@ -400,7 +432,7 @@ export default function Home() {
                       >
                         <SheetTrigger asChild>
                           <Button variant="ghost" size="icon" className="h-10 w-10 rounded-full text-slate-400 active:bg-slate-100">
-                            <MoreVertical className="h-5 w-5" />
+                            < MoreVertical className="h-5 w-5" />
                           </Button>
                         </SheetTrigger>
                         <SheetContent side="bottom" className="rounded-t-2xl px-6 pb-10 pt-4 border-t-0 shadow-2xl">
@@ -499,6 +531,37 @@ export default function Home() {
           <DialogFooter>
             <Button onClick={handleQuickUpdateStock} className="w-full h-12 font-black shadow-lg shadow-primary/20">
               SIMPAN STOK
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isQuickPriceOpen} onOpenChange={setIsQuickPriceOpen}>
+        <DialogContent className="sm:max-w-[350px] rounded-t-3xl sm:rounded-2xl">
+          <DialogHeader>
+            <DialogTitle className="text-lg font-black text-slate-800">Edit Harga Jual</DialogTitle>
+          </DialogHeader>
+          <div className="py-4 space-y-4">
+            <div className="bg-slate-50 p-3 rounded-lg border border-slate-100">
+              <p className="text-[10px] text-slate-400 font-bold uppercase">Nama Barang</p>
+              <p className="text-sm font-bold text-slate-700">{quickPriceProduct?.namaBarang}</p>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="quickPrice" className="text-xs font-bold text-slate-600">Harga Jual Baru (Rp)</Label>
+              <Input 
+                id="quickPrice"
+                type="number"
+                value={newPriceInput}
+                onChange={(e) => setNewPriceInput(e.target.value)}
+                className="h-12 text-lg font-black border-slate-200 focus:ring-primary"
+                autoFocus
+                onFocus={(e) => e.target.select()}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button onClick={handleQuickUpdatePrice} className="w-full h-12 font-black shadow-lg shadow-primary/20">
+              SIMPAN HARGA
             </Button>
           </DialogFooter>
         </DialogContent>
