@@ -90,6 +90,8 @@ export function LaporanDrawer({ products, warungId, warungName }: LaporanDrawerP
 
   const handleSaveTarget = () => {
     if (!database) return;
+    if (!checkBackupPin()) return;
+
     const val = parseFloat(targetInput) || 0;
     const targetRef = ref(database, `warungs/${warungId}/settings/modalTarget`);
     set(targetRef, val).then(() => {
@@ -99,6 +101,8 @@ export function LaporanDrawer({ products, warungId, warungName }: LaporanDrawerP
 
   const handleSaveHistory = () => {
     if (!database) return;
+    if (!checkBackupPin()) return;
+
     const historyRef = ref(database, `warungs/${warungId}/modalChecks`);
     const payload = {
       tanggal: Date.now(),
@@ -117,8 +121,12 @@ export function LaporanDrawer({ products, warungId, warungName }: LaporanDrawerP
 
   const handleDeleteHistory = (id: string) => {
     if (!database) return;
-    if (confirm('Hapus catatan riwayat ini?')) {
-      remove(ref(database, `warungs/${warungId}/modalChecks/${id}`));
+    if (!checkBackupPin()) return;
+
+    if (confirm('Yakin hapus riwayat ini?')) {
+      remove(ref(database, `warungs/${warungId}/modalChecks/${id}`)).then(() => {
+        toast({ title: "Dihapus", description: "Catatan riwayat telah dihapus." });
+      });
     }
   };
 
@@ -241,7 +249,10 @@ export function LaporanDrawer({ products, warungId, warungName }: LaporanDrawerP
 
           {/* 4. CEK MODAL TOKO */}
           <section className="bg-slate-50 p-4 rounded-xl border border-slate-200 shadow-inner">
-            <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-4 flex items-center gap-2"><Wallet className="h-3 w-3" /> Cek Modal Toko</h3>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-2"><Wallet className="h-3 w-3" /> Cek Modal Toko</h3>
+              {!isBackupUnlocked && <Lock className="h-2.5 w-2.5 text-slate-300" />}
+            </div>
             <div className="space-y-4">
               <div className="space-y-3">
                 <div className="flex justify-between items-center">
@@ -287,12 +298,9 @@ export function LaporanDrawer({ products, warungId, warungName }: LaporanDrawerP
                   </h4>
                   <div className="space-y-2">
                     {sortedHistory.map((item: any) => (
-                      <div key={item.id} className="bg-white p-2.5 rounded-lg border border-slate-100 shadow-sm relative group">
+                      <div key={item.id} className="bg-white p-2.5 rounded-lg border border-slate-100 shadow-sm relative pr-10">
                         <div className="flex justify-between items-start mb-1">
                           <span className="text-[9px] font-bold text-slate-400">{formatDate(item.tanggal)}</span>
-                          <Button variant="ghost" size="icon" className="h-5 w-5 text-slate-300 hover:text-destructive absolute top-1 right-1 opacity-0 group-hover:opacity-100" onClick={() => handleDeleteHistory(item.id)}>
-                            <Trash2 className="h-3 w-3" />
-                          </Button>
                         </div>
                         <div className="flex justify-between items-center">
                           <div className="flex flex-col">
@@ -304,6 +312,16 @@ export function LaporanDrawer({ products, warungId, warungName }: LaporanDrawerP
                             item.status === 'Kurang' ? 'bg-red-50 text-destructive border-red-100' : 'bg-blue-50 text-blue-600 border-blue-100'
                           }`}>{item.status}</div>
                         </div>
+
+                        {/* TOMBOL HAPUS - SELALU TERLIHAT DAN RAPI */}
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          className="h-7 w-7 text-destructive hover:bg-red-50 bg-red-50/50 border border-red-100 rounded-full absolute top-2 right-2 shadow-sm transition-all flex items-center justify-center" 
+                          onClick={() => handleDeleteHistory(item.id)}
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
                       </div>
                     ))}
                   </div>
