@@ -21,6 +21,6 @@ export const WARUNG_LIST: Warung[] = [
 /**
  * PIN KHUSUS FITUR
  */
-export const BACKUP_PIN = "9999"; 
-export const STOCK_OPNAME_PIN = "5555";
-export const DELETE_PRODUCT_PIN = "8888";
+export const BACKUP_PIN = "2134"; 
+export const STOCK_OPNAME_PIN = "4215";
+export const DELETE_PRODUCT_PIN = "5545";
