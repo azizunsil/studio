@@ -154,17 +154,13 @@ export function LaporanDrawer({ products, warungId, warungName }: LaporanDrawerP
               {categories.map(cat => (
                 <div key={cat} className="flex justify-between text-sm">
                   <span className="text-slate-500 font-medium">{cat}</span>
-                  <span className="font-bold text-slate-700">{getStatsByCategory(cat).stok} item</span>
+                  <span className="font-bold text-slate-700">{getStatsByCategory(cat).count} barang</span>
                 </div>
               ))}
               <Separator className="my-2" />
               <div className="flex justify-between text-sm font-bold text-slate-600">
                 <span>Total Jenis Produk</span>
-                <span>{products.length}</span>
-              </div>
-              <div className="flex justify-between font-black text-slate-800">
-                <span>Total Stok Gudang</span>
-                <span>{totalStok} item</span>
+                <span>{products.length} barang</span>
               </div>
             </div>
           </section>
@@ -234,7 +230,7 @@ export function LaporanDrawer({ products, warungId, warungName }: LaporanDrawerP
                 </div>
               </div>
 
-              {/* UPDATE TARGET MODAL - DIPINDAHKAN KE ATAS */}
+              {/* UPDATE TARGET MODAL */}
               <div className="pt-2 border-t border-slate-200/50 space-y-2">
                 <Label className="text-[10px] font-black text-slate-400 uppercase">Update Target</Label>
                 <div className="flex gap-2">
@@ -243,7 +239,7 @@ export function LaporanDrawer({ products, warungId, warungName }: LaporanDrawerP
                 </div>
               </div>
 
-              {/* TOMBOL SIMPAN RIWAYAT - DIPINDAHKAN KE BAWAH UPDATE TARGET */}
+              {/* TOMBOL SIMPAN RIWAYAT */}
               <Button onClick={handleSaveHistory} className="w-full h-10 text-[10px] font-black uppercase bg-white text-primary border border-primary/20 hover:bg-slate-100 shadow-none" variant="outline"><History className="h-3.5 w-3.5 mr-2" /> Simpan Riwayat</Button>
               
               {/* LIST RIWAYAT */}
