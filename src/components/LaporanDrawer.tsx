@@ -35,7 +35,6 @@ export function LaporanDrawer({ products, warungId, warungName }: LaporanDrawerP
   const { data: settingsData } = useDoc(database, `warungs/${warungId}/settings`);
   const { data: historyData = [] } = useCollection(database, `warungs/${warungId}/modalChecks`);
   const { data: adjustmentsData = [] } = useCollection<ModalAdjustment>(database, `warungs/${warungId}/modalAdjustments`);
-  const { data: liabilitiesData = [] } = useCollection<RorisLiability>(database, `warungs/${warungId}/rorisLiabilities`);
   
   const [targetInput, setTargetInput] = useState<string>('');
   const [liabilityInput, setLiabilityInput] = useState<string>('');
@@ -45,12 +44,6 @@ export function LaporanDrawer({ products, warungId, warungName }: LaporanDrawerP
   const [adjDesc, setAdjDesc] = useState('');
   const [adjType, setAdjType] = useState<'Tambah' | 'Kurang'>('Tambah');
   const [adjNominal, setAdjNominal] = useState('');
-
-  // Form State Tanggungan Ledger (Legacy, but kept if needed for listing)
-  const [liaManager, setLiaManager] = useState('');
-  const [liaDesc, setLiaDesc] = useState('');
-  const [liaType, setLiaType] = useState<'Tambah Tanggungan' | 'Bayar Tanggungan'>('Tambah Tanggungan');
-  const [liaNominal, setLiaNominal] = useState('');
   
   const modalTarget = (settingsData as any)?.modalTarget ?? 0;
   const rorisLiability = (settingsData as any)?.rorisLiability ?? 0;
@@ -214,6 +207,7 @@ export function LaporanDrawer({ products, warungId, warungName }: LaporanDrawerP
     return { modal, count };
   };
 
+  // Logika Modal Roris
   const totalModalBiasa = products.filter(p => p.kategori !== 'Titipan').reduce((acc, p) => acc + (p.modal * p.stok), 0);
   const totalNilaiTitipanTerjual = products.filter(p => p.kategori === 'Titipan').reduce((acc, p) => {
     const terjual = Math.max(0, (p.stokAwalTitipan || 0) - p.stok);
@@ -263,7 +257,27 @@ export function LaporanDrawer({ products, warungId, warungName }: LaporanDrawerP
             </div>
           </section>
 
-          {/* 2. RINCIAN MODAL STOK */}
+          {/* 2. INFORMASI STOK (JENIS BARANG) */}
+          <section>
+            <h3 className="text-xs font-black text-muted-foreground uppercase tracking-widest mb-3 flex items-center gap-2">
+              <div className="w-1.5 h-1.5 rounded-full bg-slate-400"></div> Informasi Stok
+            </h3>
+            <div className="space-y-2">
+              {categories.map(cat => (
+                <div key={cat} className="flex justify-between text-sm">
+                  <span className="text-slate-500 font-medium">{cat}</span>
+                  <span className="font-bold text-slate-700">{getStatsByCategory(cat).count} barang</span>
+                </div>
+              ))}
+              <Separator className="my-2" />
+              <div className="flex justify-between font-black text-slate-800 text-sm">
+                <span>Total Jenis Produk</span>
+                <span>{products.length} barang</span>
+              </div>
+            </div>
+          </section>
+
+          {/* 3. RINCIAN MODAL STOK */}
           <section>
             <h3 className="text-xs font-black text-muted-foreground uppercase tracking-widest mb-3 flex items-center gap-2">
               <div className="w-1.5 h-1.5 rounded-full bg-primary"></div> Rincian Modal Stok
@@ -287,7 +301,7 @@ export function LaporanDrawer({ products, warungId, warungName }: LaporanDrawerP
             </div>
           </section>
 
-          {/* 3. HASIL RORIS TOKO */}
+          {/* 4. HASIL RORIS TOKO */}
           <section className="bg-slate-50 p-4 rounded-xl border border-slate-200 shadow-inner">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-2"><Wallet className="h-3 w-3" /> Hasil Roris Toko</h3>
@@ -372,7 +386,7 @@ export function LaporanDrawer({ products, warungId, warungName }: LaporanDrawerP
             </div>
           </section>
 
-          {/* 4. RALAT MODAL SECTION */}
+          {/* 5. RALAT MODAL SECTION */}
           <section className="bg-slate-50 p-4 rounded-xl border border-slate-200">
             <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-4 flex items-center gap-2"><Plus className="h-3 w-3" /> Tambah Ralat Modal</h3>
             <div className="space-y-3">
@@ -414,17 +428,15 @@ export function LaporanDrawer({ products, warungId, warungName }: LaporanDrawerP
             </div>
           </section>
 
-          {/* 5. EKSPOR & BACKUP */}
+          {/* 6. EKSPOR & BACKUP */}
           <section className="space-y-6">
             <div className="bg-blue-50/50 p-4 rounded-xl border border-blue-100">
               <h3 className="text-xs font-black text-blue-600 uppercase mb-3 flex items-center gap-2"><FileText className="h-3.5 w-3.5" /> Ekspor Dokumen</h3>
               <Button 
                 onClick={() => exportLaporanModalPdf({ 
-                  products, 
+                  products, // Full list dari rawProducts
                   modalTarget, 
                   totalModalAkhir, 
-                  totalModalBiasa, 
-                  totalNilaiTitipanTerjual, 
                   ralatBersih,
                   rorisLiability,
                   selisih: selisihFinal, 
@@ -436,7 +448,7 @@ export function LaporanDrawer({ products, warungId, warungName }: LaporanDrawerP
                 className="w-full h-11 text-[11px] font-black uppercase bg-white text-blue-600 border-blue-200" 
                 variant="outline"
               >
-                <FileText className="h-4 w-4 mr-2" /> Export PDF
+                <FileText className="h-4 w-4 mr-2" /> Export Laporan PDF
               </Button>
             </div>
 
