@@ -30,6 +30,7 @@ export default function Home() {
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
+  const [openSheetId, setOpenSheetId] = useState<string | null>(null);
   
   const [quickStockProduct, setQuickStockProduct] = useState<Product | null>(null);
   const [isQuickStockOpen, setIsQuickStockOpen] = useState(false);
@@ -131,13 +132,15 @@ export default function Home() {
   };
 
   const handleDelete = (id: string) => {
-    if (!database || !activeWarung) return;
+    if (!database || !activeWarung) return false;
     if (confirm('Hapus barang ini?')) {
       const itemRef = ref(database, `warungs/${activeWarung.id}/products/${id}`);
       remove(itemRef).catch((err) => {
         console.error("Delete Error:", err);
       });
+      return true;
     }
+    return false;
   };
 
   const handleQuickUpdateStock = () => {
@@ -391,7 +394,10 @@ export default function Home() {
                     </div>
 
                     <div className="absolute top-2 right-1">
-                      <Sheet>
+                      <Sheet 
+                        open={openSheetId === product.id} 
+                        onOpenChange={(open) => setOpenSheetId(open ? product.id : null)}
+                      >
                         <SheetTrigger asChild>
                           <Button variant="ghost" size="icon" className="h-10 w-10 rounded-full text-slate-400 active:bg-slate-100">
                             <MoreVertical className="h-5 w-5" />
@@ -411,6 +417,7 @@ export default function Home() {
                               onClick={() => {
                                 setEditingProduct(product);
                                 setIsEditOpen(true);
+                                setOpenSheetId(null);
                               }}
                             >
                               <div className="bg-blue-100 p-2 rounded-lg">
@@ -421,7 +428,11 @@ export default function Home() {
                             <Button 
                               variant="destructive" 
                               className="w-full h-14 justify-start gap-4 text-base font-bold"
-                              onClick={() => handleDelete(product.id)}
+                              onClick={() => {
+                                if (handleDelete(product.id)) {
+                                  setOpenSheetId(null);
+                                }
+                              }}
                             >
                               <div className="bg-red-100/20 p-2 rounded-lg">
                                 <Plus className="h-5 w-5 text-white rotate-45" />
