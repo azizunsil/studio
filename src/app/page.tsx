@@ -392,7 +392,7 @@ export default function Home() {
                   <div className="flex justify-between items-start">
                     <div className="flex-1 min-w-0 pr-8">
                       <div className="flex items-center gap-2 mb-2 flex-wrap">
-                        <h3 className="font-bold text-slate-800 truncate text-base leading-tight max-w-[200px]">{product.namaBarang}</h3>
+                        <h3 className="font-bold text-slate-800 line-clamp-2 text-base leading-tight">{product.namaBarang}</h3>
                         <Badge variant="secondary" className={`text-[9px] h-3.5 px-1.5 py-0 font-bold shrink-0 ${product.kategori === 'Titipan' ? 'bg-blue-100 text-blue-700' : 'bg-slate-100 text-slate-600'}`}>
                           {product.kategori}
                         </Badge>
