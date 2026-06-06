@@ -64,15 +64,44 @@ export const exportLaporanModalPdf = ({
   doc.text(`Dicetak pada: ${dateStr}, pukul ${timeStr} WIB`, 14, 28);
   doc.line(14, 32, 196, 32);
 
-  // SECTION 1: RINGKASAN HASIL RORIS
+  // SECTION 1: RINGKASAN PER KATEGORI (Pindah ke posisi pertama)
   doc.setFontSize(12);
   doc.setTextColor(30, 41, 59);
-  doc.text("1. Ringkasan Hasil Roris", 14, 40);
+  doc.text("1. Ringkasan Per Kategori", 14, 40);
+
+  const categorySummaryData = categoryOrder.map(cat => {
+    const catProducts = products.filter(p => p.kategori === cat);
+    const totalStok = catProducts.reduce((acc, p) => acc + (p.stok || 0), 0);
+    const totalModal = cat === 'Titipan' 
+      ? 0 
+      : catProducts.reduce((acc, p) => acc + ((p.stok || 0) * (p.modal || 0)), 0);
+    return [cat, `${catProducts.length} barang`, `${totalStok} item`, formatCurrency(totalModal)];
+  });
+
+  autoTable(doc, {
+    startY: 45,
+    head: [['Kategori', 'Jumlah Jenis', 'Total Stok', 'Total Modal']],
+    body: categorySummaryData,
+    headStyles: { fillColor: [51, 65, 85] },
+    styles: { fontSize: 9 },
+  });
+
+  // SECTION 2: RINGKASAN HASIL RORIS (Pindah ke posisi kedua)
+  let currentY = (doc as any).lastAutoTable.finalY + 15;
+  doc.setFontSize(12);
+  doc.setTextColor(30, 41, 59);
+  doc.text("2. Ringkasan Hasil Roris", 14, currentY);
+
+  // Kalkulasi Titipan Terjual untuk baris baru
+  const totalNilaiTitipanTerjual = products.filter(p => p.kategori === 'Titipan').reduce((acc, p) => {
+    const terjual = Math.max(0, (p.stokAwalTitipan || 0) - p.stok);
+    return acc + (terjual * p.modal);
+  }, 0);
 
   const summaryData = [
-    ["Total Jenis Produk", `${products.length} jenis`],
-    ["Total Stok Gudang", `${products.reduce((acc, p) => acc + (p.stok || 0), 0)} item`],
-    ["Total Modal Barang", formatCurrency(totalModalAkhir)],
+    ["Total Jenis Produk", `${products.length} barang`],
+    ["Total Modal Barang", formatCurrency(totalModalAkhir + totalNilaiTitipanTerjual)],
+    ["Titipan Terjual (-)", `-${formatCurrency(totalNilaiTitipanTerjual)}`],
     ["Target Modal Toko", formatCurrency(modalTarget)],
     ["Ralat Modal Bersih", formatCurrency(ralatBersih, true)],
     ["Tanggungan Roris", `-${formatCurrency(rorisLiability)}`],
@@ -81,7 +110,7 @@ export const exportLaporanModalPdf = ({
   ];
 
   autoTable(doc, {
-    startY: 45,
+    startY: currentY + 5,
     body: summaryData,
     theme: 'plain',
     styles: { fontSize: 10, cellPadding: 2 },
@@ -93,29 +122,6 @@ export const exportLaporanModalPdf = ({
         else if (selisih > 0) data.cell.styles.textColor = [5, 150, 105];
       }
     }
-  });
-
-  // SECTION 2: RINGKASAN PER KATEGORI
-  let currentY = (doc as any).lastAutoTable.finalY + 15;
-  doc.setFontSize(12);
-  doc.setTextColor(30, 41, 59);
-  doc.text("2. Ringkasan Per Kategori", 14, currentY);
-
-  const categorySummaryData = categoryOrder.map(cat => {
-    const catProducts = products.filter(p => p.kategori === cat);
-    const totalStok = catProducts.reduce((acc, p) => acc + (p.stok || 0), 0);
-    const totalModal = cat.toLowerCase() === 'titipan' 
-      ? 0 
-      : catProducts.reduce((acc, p) => acc + ((p.stok || 0) * (p.modal || 0)), 0);
-    return [cat, `${catProducts.length} jenis`, `${totalStok} barang`, formatCurrency(totalModal)];
-  });
-
-  autoTable(doc, {
-    startY: currentY + 5,
-    head: [['Kategori', 'Jumlah Jenis', 'Total Stok', 'Total Modal']],
-    body: categorySummaryData,
-    headStyles: { fillColor: [51, 65, 85] },
-    styles: { fontSize: 9 },
   });
 
   // SECTION 3: RINCIAN RALAT MODAL
@@ -232,12 +238,12 @@ export const exportLaporanModalPdf = ({
     doc.text("Detail Barang Titipan", 14, currentY);
     currentY += 5;
 
-    let totalNilaiTitipanTerjual = 0;
+    let totalTitipanTerjualVal = 0;
     const titipanTableData = titipanProducts.map(p => {
       const stokAwal = p.stokAwalTitipan || 0;
       const terjual = Math.max(0, stokAwal - p.stok);
       const nilaiTerjual = terjual * p.modal;
-      totalNilaiTitipanTerjual += nilaiTerjual;
+      totalTitipanTerjualVal += nilaiTerjual;
       
       return [
         p.namaBarang,
@@ -261,7 +267,7 @@ export const exportLaporanModalPdf = ({
     doc.setFontSize(10);
     doc.setTextColor(30, 41, 59);
     doc.setFont("helvetica", "bold");
-    doc.text(`Total Nilai Titipan Terjual: ${formatCurrency(totalNilaiTitipanTerjual)}`, 14, currentY);
+    doc.text(`Total Nilai Titipan Terjual: ${formatCurrency(totalTitipanTerjualVal)}`, 14, currentY);
     doc.setFont("helvetica", "normal");
   }
 
