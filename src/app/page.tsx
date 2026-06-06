@@ -99,9 +99,26 @@ export default function Home() {
       return matchSearch && matchCat;
     });
 
+    // Helper untuk mendeteksi produk eceran
+    const isEceranProduct = (p: Product) => {
+      const name = (p.namaBarang || '').toLowerCase();
+      return name.includes('ecer') || name.includes('eceran');
+    };
+
     switch (sortBy) {
       case 'A-Z':
-        result.sort((a, b) => (a.namaBarang || '').localeCompare(b.namaBarang || ''));
+        result.sort((a, b) => {
+          const aEcer = isEceranProduct(a);
+          const bEcer = isEceranProduct(b);
+          
+          // Jika satu eceran dan satu tidak, prioritaskan non-eceran ke atas
+          if (aEcer !== bEcer) {
+            return aEcer ? 1 : -1;
+          }
+          
+          // Jika keduanya sama-sama eceran atau sama-sama packs, urutkan alfabetis
+          return (a.namaBarang || '').localeCompare(b.namaBarang || '');
+        });
         break;
       case 'Terbaru':
         result.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
@@ -117,7 +134,12 @@ export default function Home() {
         });
         break;
       default:
-        result.sort((a, b) => (a.namaBarang || '').localeCompare(b.namaBarang || ''));
+        result.sort((a, b) => {
+          const aEcer = isEceranProduct(a);
+          const bEcer = isEceranProduct(b);
+          if (aEcer !== bEcer) return aEcer ? 1 : -1;
+          return (a.namaBarang || '').localeCompare(b.namaBarang || '');
+        });
     }
 
     return result;
