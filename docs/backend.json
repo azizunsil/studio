@@ -23,7 +23,8 @@
       "type": "object",
       "properties": {
         "modalTarget": { "type": "number" },
-        "stockOpnameMode": { "type": "boolean" }
+        "stockOpnameMode": { "type": "boolean" },
+        "rorisLiability": { "type": "number", "description": "Nilai tanggungan roris aktif sebagai pengurang selisih" }
       }
     },
     "ModalAdjustment": {

@@ -38,6 +38,7 @@ export function LaporanDrawer({ products, warungId, warungName }: LaporanDrawerP
   const { data: liabilitiesData = [] } = useCollection<RorisLiability>(database, `warungs/${warungId}/rorisLiabilities`);
   
   const [targetInput, setTargetInput] = useState<string>('');
+  const [liabilityInput, setLiabilityInput] = useState<string>('');
   const [isBackupUnlocked, setIsBackupUnlocked] = useState(false);
 
   // Form State Ralat
@@ -45,13 +46,14 @@ export function LaporanDrawer({ products, warungId, warungName }: LaporanDrawerP
   const [adjType, setAdjType] = useState<'Tambah' | 'Kurang'>('Tambah');
   const [adjNominal, setAdjNominal] = useState('');
 
-  // Form State Tanggungan
+  // Form State Tanggungan Ledger
   const [liaManager, setLiaManager] = useState('');
   const [liaDesc, setLiaDesc] = useState('');
   const [liaType, setLiaType] = useState<'Tambah Tanggungan' | 'Bayar Tanggungan'>('Tambah Tanggungan');
   const [liaNominal, setLiaNominal] = useState('');
   
   const modalTarget = (settingsData as any)?.modalTarget ?? 0;
+  const rorisLiability = (settingsData as any)?.rorisLiability ?? 0;
   const isStockOpnameMode = (settingsData as any)?.stockOpnameMode === true;
 
   useEffect(() => {
@@ -59,6 +61,12 @@ export function LaporanDrawer({ products, warungId, warungName }: LaporanDrawerP
       setTargetInput(modalTarget.toString());
     }
   }, [modalTarget]);
+
+  useEffect(() => {
+    if (rorisLiability !== undefined && rorisLiability !== null) {
+      setLiabilityInput(rorisLiability.toString());
+    }
+  }, [rorisLiability]);
 
   const sortedHistory = useMemo(() => {
     return [...historyData]
@@ -119,6 +127,17 @@ export function LaporanDrawer({ products, warungId, warungName }: LaporanDrawerP
     const targetRef = ref(database, `warungs/${warungId}/settings/modalTarget`);
     set(targetRef, val).then(() => {
       toast({ title: "Target Diperbarui", description: `Target modal baru: ${formatCurrency(val)}` });
+    });
+  };
+
+  const handleSaveLiabilityValue = () => {
+    if (!database) return;
+    if (!checkBackupPin()) return;
+
+    const val = parseFloat(liabilityInput) || 0;
+    const targetRef = ref(database, `warungs/${warungId}/settings/rorisLiability`);
+    set(targetRef, val).then(() => {
+      toast({ title: "Tanggungan Diperbarui", description: `Nilai tanggungan aktif: ${formatCurrency(val)}` });
     });
   };
 
@@ -185,7 +204,7 @@ export function LaporanDrawer({ products, warungId, warungName }: LaporanDrawerP
     }
   };
 
-  // Logic Tanggungan
+  // Logic Tanggungan Ledger
   const handleAddLiability = () => {
     if (!database) return;
     const nominal = parseFloat(liaNominal);
@@ -247,12 +266,14 @@ export function LaporanDrawer({ products, warungId, warungName }: LaporanDrawerP
     return adj.jenis === 'Tambah' ? acc + adj.nominal : acc - adj.nominal;
   }, 0);
 
-  const selisihFinal = totalModalAkhir + ralatBersih - modalTarget;
+  // Kalkulasi Selisih Akhir Revisi: (Modal Barang + Ralat Bersih) - Tanggungan Roris - Target Modal
+  const selisihFinal = totalModalAkhir + ralatBersih - rorisLiability - modalTarget;
+  
   let statusFinal = 'Aman', statusColor = 'text-blue-600', StatusIcon = CheckCircle2;
   if (selisihFinal > 0) { statusFinal = 'Surplus'; statusColor = 'text-emerald-600'; StatusIcon = TrendingUp; }
   else if (selisihFinal < 0) { statusFinal = 'Kurang'; statusColor = 'text-destructive'; StatusIcon = TrendingDown; }
 
-  // Stats Tanggungan
+  // Stats Tanggungan Ledger
   const totalLiability = liabilitiesData.filter(l => l.jenis === 'Tambah Tanggungan').reduce((acc, l) => acc + l.nominal, 0);
   const totalPaid = liabilitiesData.filter(l => l.jenis === 'Bayar Tanggungan').reduce((acc, l) => acc + l.nominal, 0);
   const sisaTanggungan = totalLiability - totalPaid;
@@ -312,7 +333,7 @@ export function LaporanDrawer({ products, warungId, warungName }: LaporanDrawerP
             </div>
           </section>
 
-          {/* 3. CEK MODAL TOKO */}
+          {/* 3. HASIL RORIS TOKO */}
           <section className="bg-slate-50 p-4 rounded-xl border border-slate-200 shadow-inner">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-2"><Wallet className="h-3 w-3" /> Hasil Roris Toko</h3>
@@ -334,6 +355,11 @@ export function LaporanDrawer({ products, warungId, warungName }: LaporanDrawerP
                     {ralatBersih >= 0 ? '+' : ''}{formatCurrency(ralatBersih)}
                   </span>
                 </div>
+                <div className="flex justify-between items-center text-sm">
+                  <span className="text-amber-600 font-bold uppercase text-[10px]">Tanggungan Roris</span>
+                  <span className="font-bold text-destructive">-{formatCurrency(rorisLiability)}</span>
+                </div>
+                
                 <Separator className="bg-slate-200" />
                 <div className="flex justify-between items-center pt-1">
                   <div className="flex flex-col">
@@ -350,9 +376,21 @@ export function LaporanDrawer({ products, warungId, warungName }: LaporanDrawerP
               {/* ACTION BUTTONS */}
               <div className="grid gap-2 pt-2">
                 <div className="flex gap-2">
-                  <Input type="number" value={targetInput} onChange={(e) => setTargetInput(e.target.value)} className="h-9 text-xs font-bold bg-white" placeholder="Target..." />
-                  <Button onClick={handleSaveTarget} className="h-9 px-4 text-[10px] font-black uppercase shrink-0">Set Target</Button>
+                  <div className="flex-1 space-y-1">
+                    <Label className="text-[9px] font-black text-slate-400 uppercase">Target Modal</Label>
+                    <Input type="number" value={targetInput} onChange={(e) => setTargetInput(e.target.value)} className="h-9 text-xs font-bold bg-white" placeholder="Target..." />
+                  </div>
+                  <Button onClick={handleSaveTarget} className="h-9 px-4 text-[10px] font-black uppercase self-end">Set Target</Button>
                 </div>
+
+                <div className="flex gap-2">
+                  <div className="flex-1 space-y-1">
+                    <Label className="text-[9px] font-black text-slate-400 uppercase">Tanggungan Roris</Label>
+                    <Input type="number" value={liabilityInput} onChange={(e) => setLiabilityInput(e.target.value)} className="h-9 text-xs font-bold bg-white" placeholder="Nominal..." />
+                  </div>
+                  <Button onClick={handleSaveLiabilityValue} className="h-9 px-4 text-[10px] font-black uppercase self-end bg-amber-600">Set Tanggungan</Button>
+                </div>
+
                 <Button onClick={handleSaveHistory} className="w-full h-10 text-[10px] font-black uppercase bg-white text-primary border border-primary/20 hover:bg-slate-100 shadow-none" variant="outline"><History className="h-3.5 w-3.5 mr-2" /> Simpan Riwayat Roris</Button>
               </div>
               
@@ -412,7 +450,7 @@ export function LaporanDrawer({ products, warungId, warungName }: LaporanDrawerP
                         </span>
                         <span className="text-[8px] text-slate-400">{formatDate(item.tanggal)}</span>
                       </div>
-                      <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:bg-red-50 bg-red-50/50 border border-red-100 rounded-full absolute top-2 right-2" onClick={() => handleDeleteAdjustment(item.id)}>
+                      <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:bg-red-50 bg-red-50/50 border border-red-100 rounded-full absolute top-2 right-2" onClick={() => handleDeleteAdjustment(id)}>
                         <Trash2 className="h-3 w-3" />
                       </Button>
                     </div>
@@ -422,14 +460,14 @@ export function LaporanDrawer({ products, warungId, warungName }: LaporanDrawerP
             </div>
           </section>
 
-          {/* 5. TANGGUNGAN RORIS SECTION */}
+          {/* 5. TANGGUNGAN RORIS (LEDGER) SECTION */}
           <section className="bg-slate-50 p-4 rounded-xl border border-slate-200">
-            <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-4 flex items-center gap-2"><User className="h-3 w-3" /> Tanggungan Roris</h3>
+            <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-4 flex items-center gap-2"><User className="h-3 w-3" /> Log Tanggungan Pengelola</h3>
             <div className="space-y-3">
               {/* STATS TANGGUNGAN */}
               <div className="bg-white p-3 rounded-lg border border-slate-200 shadow-sm space-y-2 mb-2">
                 <div className="flex justify-between text-[10px] font-bold">
-                  <span className="text-slate-400 uppercase">Sisa Tanggungan</span>
+                  <span className="text-slate-400 uppercase">Sisa di Ledger</span>
                   <span className="text-destructive font-black">{formatCurrency(sisaTanggungan)}</span>
                 </div>
                 <div className="flex gap-4">
@@ -459,7 +497,7 @@ export function LaporanDrawer({ products, warungId, warungName }: LaporanDrawerP
                   </Select>
                   <Input type="number" placeholder="Nominal Rp..." className="h-8 text-[11px] bg-white flex-1" value={liaNominal} onChange={(e) => setLiaNominal(e.target.value)} />
                 </div>
-                <Button onClick={handleAddLiability} className="w-full h-8 text-[9px] font-black uppercase gap-2 bg-slate-700">Simpan Tanggungan</Button>
+                <Button onClick={handleAddLiability} className="w-full h-8 text-[9px] font-black uppercase gap-2 bg-slate-700">Simpan Transaksi</Button>
               </div>
 
               {/* LIST TANGGUNGAN */}
