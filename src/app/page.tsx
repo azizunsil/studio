@@ -2,7 +2,7 @@
 "use client"
 
 import React, { useState, useMemo, useEffect } from 'react';
-import { Search, Plus, Edit2, Package, Store, MoreVertical, Loader2, AlertCircle, Clock, ArrowUpDown, LogOut, Lock } from 'lucide-react';
+import { Search, Plus, Edit2, Package, Store, MoreVertical, Loader2, AlertCircle, Clock, ArrowUpDown, LogOut, Lock, ChevronDown } from 'lucide-react';
 import { Product, Warung } from '@/lib/types';
 import { WARUNG_LIST } from '@/lib/constants';
 import { Input } from '@/components/ui/input';
@@ -25,13 +25,20 @@ import { id } from 'date-fns/locale';
 import Image from 'next/image';
 
 export default function Home() {
-  const [search, setSearch] = useState('');
+  // State untuk Input Pencarian (Langsung)
+  const [searchInput, setSearchInput] = useState('');
+  // State untuk Pencarian Ter-debounce (Digunakan untuk Filter)
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  
   const [selectedCategory, setSelectedCategory] = useState<string>('Semua');
   const [sortBy, setSortBy] = useState<string>('A-Z');
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [openSheetId, setOpenSheetId] = useState<string | null>(null);
+  
+  // State untuk Pagination
+  const [displayLimit, setDisplayLimit] = useState(50);
   
   const [quickStockProduct, setQuickStockProduct] = useState<Product | null>(null);
   const [isQuickStockOpen, setIsQuickStockOpen] = useState(false);
@@ -51,6 +58,15 @@ export default function Home() {
   const database = useDatabase();
   const auth = useAuth();
   const { user, loading: authLoading } = useUser(auth);
+
+  // Efek Debounce untuk Pencarian
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedSearch(searchInput);
+      setDisplayLimit(50); // Reset limit saat mencari
+    }, 300);
+    return () => clearTimeout(handler);
+  }, [searchInput]);
 
   useEffect(() => {
     const saved = localStorage.getItem('selectedWarung');
@@ -78,7 +94,7 @@ export default function Home() {
   const filteredAndSortedProducts = useMemo(() => {
     let result = rawProducts.filter(p => {
       const nama = p.namaBarang || '';
-      const matchSearch = nama.toLowerCase().includes(search.toLowerCase());
+      const matchSearch = nama.toLowerCase().includes(debouncedSearch.toLowerCase());
       const matchCat = selectedCategory === 'Semua' || p.kategori === selectedCategory;
       return matchSearch && matchCat;
     });
@@ -105,7 +121,12 @@ export default function Home() {
     }
 
     return result;
-  }, [rawProducts, search, selectedCategory, sortBy]);
+  }, [rawProducts, debouncedSearch, selectedCategory, sortBy]);
+
+  // Produk yang benar-benar ditampilkan (Sesuai Limit)
+  const paginatedProducts = useMemo(() => {
+    return filteredAndSortedProducts.slice(0, displayLimit);
+  }, [filteredAndSortedProducts, displayLimit]);
 
   const handleSelectWarung = (warungId: string) => {
     const warung = WARUNG_LIST.find(w => w.id === warungId);
@@ -300,8 +321,8 @@ export default function Home() {
             <Input 
               placeholder="Cari nama barang..." 
               className="pl-10 h-10 bg-slate-50 border-slate-200 shadow-sm rounded-lg focus-visible:ring-primary w-full text-sm font-medium"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
             />
           </div>
 
@@ -310,7 +331,7 @@ export default function Home() {
               <ArrowUpDown className="h-3.5 w-3.5 text-slate-400" />
               <span className="text-[10px] font-black text-slate-400 uppercase">Urutkan:</span>
             </div>
-            <Select value={sortBy} onValueChange={setSortBy}>
+            <Select value={sortBy} onValueChange={(val) => { setSortBy(val); setDisplayLimit(50); }}>
               <SelectTrigger className="h-8 border-slate-200 bg-white text-[10px] font-bold uppercase tracking-wider rounded-lg shadow-sm focus:ring-primary">
                 <SelectValue placeholder="Pilih Urutan" />
               </SelectTrigger>
@@ -326,7 +347,7 @@ export default function Home() {
 
         <div className="w-full max-w-full overflow-x-auto no-scrollbar">
           <div className="px-4 pb-2">
-            <Tabs value={selectedCategory} onValueChange={setSelectedCategory} className="w-full">
+            <Tabs value={selectedCategory} onValueChange={(val) => { setSelectedCategory(val); setDisplayLimit(50); }} className="w-full">
               <TabsList className="h-auto bg-transparent p-0 justify-start flex flex-nowrap w-max gap-2">
                 {categories.map(cat => (
                   <TabsTrigger 
@@ -357,7 +378,7 @@ export default function Home() {
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
             <p className="text-xs text-slate-400 font-bold uppercase tracking-wider">Sinkronisasi Cloud...</p>
           </div>
-        ) : filteredAndSortedProducts.length === 0 ? (
+        ) : paginatedProducts.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20 text-center opacity-50">
             <Package className="h-16 w-16 mb-4 text-muted-foreground/30" />
             <p className="text-lg font-bold text-slate-800">Tidak ada barang</p>
@@ -365,7 +386,7 @@ export default function Home() {
           </div>
         ) : (
           <div className="grid gap-3">
-            {filteredAndSortedProducts.map((product) => (
+            {paginatedProducts.map((product) => (
               <Card key={product.id} className="overflow-hidden border border-slate-100 shadow-sm relative w-full hover:border-primary/20 transition-colors">
                 <CardContent className="p-4">
                   <div className="flex justify-between items-start">
@@ -479,6 +500,20 @@ export default function Home() {
                 </CardContent>
               </Card>
             ))}
+
+            {/* Tombol Load More */}
+            {filteredAndSortedProducts.length > displayLimit && (
+              <div className="py-4 text-center">
+                <Button 
+                  variant="outline" 
+                  onClick={() => setDisplayLimit(prev => prev + 50)}
+                  className="w-full h-12 rounded-xl border-dashed border-2 border-slate-200 text-slate-500 font-bold hover:bg-slate-50 hover:text-primary transition-colors gap-2"
+                >
+                  <ChevronDown className="h-4 w-4" />
+                  Tampilkan Lebih Banyak ({filteredAndSortedProducts.length - displayLimit} item lagi)
+                </Button>
+              </div>
+            )}
           </div>
         )}
       </div>
