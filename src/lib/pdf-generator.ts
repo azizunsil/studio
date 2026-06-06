@@ -64,7 +64,7 @@ export const exportLaporanModalPdf = ({
   doc.text(`Dicetak pada: ${dateStr}, pukul ${timeStr} WIB`, 14, 28);
   doc.line(14, 32, 196, 32);
 
-  // SECTION 1: RINGKASAN PER KATEGORI (Pindah ke posisi pertama)
+  // SECTION 1: RINGKASAN PER KATEGORI (Nomor 1)
   doc.setFontSize(12);
   doc.setTextColor(30, 41, 59);
   doc.text("1. Ringkasan Per Kategori", 14, 40);
@@ -86,25 +86,30 @@ export const exportLaporanModalPdf = ({
     styles: { fontSize: 9 },
   });
 
-  // SECTION 2: RINGKASAN HASIL RORIS (Pindah ke posisi kedua)
+  // SECTION 2: RINGKASAN HASIL RORIS (Nomor 2)
   let currentY = (doc as any).lastAutoTable.finalY + 15;
   doc.setFontSize(12);
   doc.setTextColor(30, 41, 59);
   doc.text("2. Ringkasan Hasil Roris", 14, currentY);
 
-  // Kalkulasi Titipan Terjual untuk baris baru
+  // Kalkulasi Titipan Terjual
   const totalNilaiTitipanTerjual = products.filter(p => p.kategori === 'Titipan').reduce((acc, p) => {
     const terjual = Math.max(0, (p.stokAwalTitipan || 0) - p.stok);
     return acc + (terjual * p.modal);
   }, 0);
 
+  // Kalkulasi Nilai-Nilai Ringkasan
+  const totalModalKotor = totalModalAkhir + totalNilaiTitipanTerjual;
+  const totalModalNet = totalModalAkhir + ralatBersih - rorisLiability;
+
   const summaryData = [
     ["Total Jenis Produk", `${products.length} barang`],
-    ["Total Modal Barang", formatCurrency(totalModalAkhir + totalNilaiTitipanTerjual)],
+    ["Total Modal Kotor", formatCurrency(totalModalKotor)],
     ["Titipan Terjual (-)", `-${formatCurrency(totalNilaiTitipanTerjual)}`],
-    ["Target Modal Toko", formatCurrency(modalTarget)],
     ["Ralat Modal Bersih", formatCurrency(ralatBersih, true)],
     ["Tanggungan Roris", `-${formatCurrency(rorisLiability)}`],
+    ["Total Modal Barang Net", formatCurrency(totalModalNet)],
+    ["Target Modal Toko", formatCurrency(modalTarget)],
     ["Selisih Akhir", formatCurrency(selisih, true)],
     ["Status Modal", status.toUpperCase()],
   ];
@@ -116,10 +121,15 @@ export const exportLaporanModalPdf = ({
     styles: { fontSize: 10, cellPadding: 2 },
     columnStyles: { 0: { fontStyle: 'bold', width: 60 } },
     didParseCell: (data) => {
-      if (data.row.index === 6) { // Selisih Akhir
+      // Baris Selisih Akhir (index 7)
+      if (data.row.index === 7) { 
         data.cell.styles.fontStyle = 'bold';
         if (selisih < 0) data.cell.styles.textColor = [220, 38, 38];
         else if (selisih > 0) data.cell.styles.textColor = [5, 150, 105];
+      }
+      // Baris Total Modal Barang Net (index 5)
+      if (data.row.index === 5) {
+        data.cell.styles.fontStyle = 'bold';
       }
     }
   });
