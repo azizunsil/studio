@@ -71,7 +71,7 @@ export const exportLaporanModalPdf = ({
 
   const summaryData = [
     ["Total Jenis Produk", `${products.length} jenis`],
-    ["Total Stok Gudang", `${products.reduce((acc, p) => acc + p.stok, 0)} item`],
+    ["Total Stok Gudang", `${products.reduce((acc, p) => acc + (p.stok || 0), 0)} item`],
     ["Total Modal Barang", formatCurrency(totalModalAkhir)],
     ["Target Modal Toko", formatCurrency(modalTarget)],
     ["Ralat Modal Bersih", formatCurrency(ralatBersih, true)],
@@ -103,9 +103,11 @@ export const exportLaporanModalPdf = ({
 
   const categorySummaryData = categoryOrder.map(cat => {
     const catProducts = products.filter(p => p.kategori === cat);
-    const totalStok = catProducts.reduce((acc, p) => acc + p.stok, 0);
-    const totalModal = catProducts.reduce((acc, p) => acc + (p.stok * p.modal), 0);
-    return [cat, `${catProducts.length} barang`, `${totalStok} item`, formatCurrency(totalModal)];
+    const totalStok = catProducts.reduce((acc, p) => acc + (p.stok || 0), 0);
+    const totalModal = cat.toLowerCase() === 'titipan' 
+      ? 0 
+      : catProducts.reduce((acc, p) => acc + ((p.stok || 0) * (p.modal || 0)), 0);
+    return [cat, `${catProducts.length} jenis`, `${totalStok} barang`, formatCurrency(totalModal)];
   });
 
   autoTable(doc, {
@@ -179,49 +181,89 @@ export const exportLaporanModalPdf = ({
     (doc as any).lastAutoTable = { finalY: currentY + 10 };
   }
 
-  // SECTION 5: DAFTAR PRODUK PER KATEGORI
-  doc.addPage();
-  currentY = 20;
-  doc.setFontSize(14);
-  doc.setTextColor(37, 99, 235);
-  doc.text("5. Daftar Lengkap Produk Per Kategori", 14, currentY);
-  currentY += 10;
-
-  categoryOrder.forEach(cat => {
-    const catProducts = products.filter(p => p.kategori === cat).sort((a, b) => a.namaBarang.localeCompare(b.namaBarang));
+  // SECTION 5: DAFTAR PRODUK LENGKAP
+  currentY = (doc as any).lastAutoTable.finalY + 20;
+  
+  // A. KATEGORI BIASA
+  const regularCategories = ['Rokok', 'Sembako', 'Minuman', 'Sachet', 'Lainnya'];
+  regularCategories.forEach(cat => {
+    const catProducts = products
+      .filter(p => p.kategori === cat)
+      .sort((a, b) => a.namaBarang.localeCompare(b.namaBarang));
     
-    if (currentY > 250) { doc.addPage(); currentY = 20; }
-
-    doc.setFontSize(11);
-    doc.setTextColor(30, 41, 59);
-    doc.text(`Kategori: ${cat}`, 14, currentY);
-    currentY += 5;
-
     if (catProducts.length > 0) {
-      const tableData = catProducts.map(p => [
+      if (currentY > 250) { doc.addPage(); currentY = 20; }
+
+      doc.setFontSize(11);
+      doc.setTextColor(37, 99, 235);
+      doc.text(`Daftar Produk ${cat}`, 14, currentY);
+      currentY += 5;
+
+      const tableData = catProducts.map((p, idx) => [
+        idx + 1,
         p.namaBarang,
         p.stok,
         formatCurrency(p.modal),
-        formatCurrency(p.hargaJual),
-        formatCurrency(p.stok * p.modal)
+        formatCurrency((p.stok || 0) * (p.modal || 0))
       ]);
 
       autoTable(doc, {
         startY: currentY,
-        head: [['Nama Barang', 'Stok', 'Modal', 'Harga Jual', 'Total Modal']],
+        head: [['No', 'Nama Barang', 'Stok', 'Modal', 'Nilai Modal']],
         body: tableData,
         headStyles: { fillColor: [51, 65, 85] },
         styles: { fontSize: 8 },
         margin: { bottom: 20 },
       });
       currentY = (doc as any).lastAutoTable.finalY + 15;
-    } else {
-      doc.setFontSize(9);
-      doc.setTextColor(148, 163, 184);
-      doc.text("Tidak ada produk pada kategori ini.", 14, currentY);
-      currentY += 15;
     }
   });
+
+  // B. KATEGORI TITIPAN (KHUSUS)
+  const titipanProducts = products
+    .filter(p => p.kategori === 'Titipan')
+    .sort((a, b) => a.namaBarang.localeCompare(b.namaBarang));
+  
+  if (titipanProducts.length > 0) {
+    if (currentY > 240) { doc.addPage(); currentY = 20; }
+
+    doc.setFontSize(12);
+    doc.setTextColor(37, 99, 235);
+    doc.text("Detail Barang Titipan", 14, currentY);
+    currentY += 5;
+
+    let totalNilaiTitipanTerjual = 0;
+    const titipanTableData = titipanProducts.map(p => {
+      const stokAwal = p.stokAwalTitipan || 0;
+      const terjual = Math.max(0, stokAwal - p.stok);
+      const nilaiTerjual = terjual * p.modal;
+      totalNilaiTitipanTerjual += nilaiTerjual;
+      
+      return [
+        p.namaBarang,
+        stokAwal,
+        p.stok,
+        terjual,
+        formatCurrency(p.modal),
+        formatCurrency(nilaiTerjual)
+      ];
+    });
+
+    autoTable(doc, {
+      startY: currentY,
+      head: [['Nama Barang', 'Awal', 'Stok', 'Terjual', 'Modal Satuan', 'Nilai Terjual']],
+      body: titipanTableData,
+      headStyles: { fillColor: [2, 132, 199] },
+      styles: { fontSize: 8 },
+    });
+
+    currentY = (doc as any).lastAutoTable.finalY + 10;
+    doc.setFontSize(10);
+    doc.setTextColor(30, 41, 59);
+    doc.setFont("helvetica", "bold");
+    doc.text(`Total Nilai Titipan Terjual: ${formatCurrency(totalNilaiTitipanTerjual)}`, 14, currentY);
+    doc.setFont("helvetica", "normal");
+  }
 
   // FOOTER HALAMAN
   const pageCount = (doc as any).internal.getNumberOfPages();
