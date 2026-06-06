@@ -1,8 +1,9 @@
+
 "use client"
 
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
-import { Product } from "./types";
+import { Product, ModalAdjustment } from "./types";
 import { format } from "date-fns";
 import { id } from "date-fns/locale";
 
@@ -12,9 +13,12 @@ interface PdfExportOptions {
   totalModalAkhir: number;
   totalModalBiasa: number;
   totalNilaiTitipanTerjual: number;
+  ralatBersih: number;
+  rorisLiability: number;
   selisih: number;
   status: string;
   modalHistory: any[];
+  adjustments: ModalAdjustment[];
   warungName: string;
 }
 
@@ -24,9 +28,12 @@ export const exportLaporanModalPdf = ({
   totalModalAkhir,
   totalModalBiasa,
   totalNilaiTitipanTerjual,
+  ralatBersih,
+  rorisLiability,
   selisih,
   status,
   modalHistory,
+  adjustments,
   warungName
 }: PdfExportOptions) => {
   const doc = new jsPDF();
@@ -34,18 +41,22 @@ export const exportLaporanModalPdf = ({
   const dateStr = format(now, "dd MMMM yyyy", { locale: id });
   const timeStr = format(now, "HH:mm");
 
-  const formatCurrency = (val: number) => {
-    return new Intl.NumberFormat('id-ID', {
+  const formatCurrency = (val: number, showSign = false) => {
+    const formatted = new Intl.NumberFormat('id-ID', {
       style: 'currency',
       currency: 'IDR',
       minimumFractionDigits: 0,
-    }).format(val);
+    }).format(Math.abs(val));
+    
+    if (val === 0) return "Rp 0";
+    const sign = val > 0 ? (showSign ? "+" : "") : "-";
+    return `${sign}${formatted}`;
   };
 
   // 1. JUDUL
   doc.setFontSize(18);
   doc.setTextColor(37, 99, 235);
-  doc.text(`Laporan Modal - ${warungName}`, 14, 20);
+  doc.text(`Laporan Roris - ${warungName}`, 14, 20);
   
   // 2. INFO LAPORAN
   doc.setFontSize(10);
@@ -61,11 +72,12 @@ export const exportLaporanModalPdf = ({
   const summaryData = [
     ["Total Jenis Produk", `${products.length} jenis`],
     ["Total Stok Gudang", `${products.reduce((acc, p) => acc + p.stok, 0)} item`],
-    ["Total Modal Kotor", formatCurrency(totalModalBiasa)],
+    ["Total Modal Barang", formatCurrency(totalModalAkhir)],
     ["Target Modal Toko", formatCurrency(modalTarget)],
-    ["Modal Saat Ini (Net)", formatCurrency(totalModalAkhir)],
-    ["Selisih Modal", `${selisih >= 0 ? '+' : ''}${formatCurrency(selisih)}`],
-    ["Status Modal", status.toUpperCase()],
+    ["Ralat Modal Bersih", formatCurrency(ralatBersih, true)],
+    ["Tanggungan Roris", formatCurrency(rorisLiability * -1, false)], // Ditampilkan sebagai pengurang
+    ["Selisih Akhir", formatCurrency(selisih, true)],
+    ["Status Roris", status.toUpperCase()],
   ];
 
   autoTable(doc, {
@@ -73,10 +85,17 @@ export const exportLaporanModalPdf = ({
     body: summaryData,
     theme: 'plain',
     styles: { fontSize: 10, cellPadding: 2 },
-    columnStyles: { 0: { fontStyle: 'bold', width: 60 } }
+    columnStyles: { 0: { fontStyle: 'bold', width: 60 } },
+    didParseCell: (data) => {
+      if (data.row.index === 6) { // Baris Selisih Akhir
+        data.cell.styles.fontStyle = 'bold';
+        if (selisih < 0) data.cell.styles.textColor = [220, 38, 38];
+        else if (selisih > 0) data.cell.styles.textColor = [5, 150, 105];
+      }
+    }
   });
 
-  // 4. RINGKASAN PER KATEGORI
+  // 4. RINCIAN PER KATEGORI
   const categories: string[] = ['Rokok', 'Sembako', 'Minuman', 'Sachet', 'Titipan', 'Lainnya'];
   const categorySummaryData = categories.map(cat => {
     const filtered = products.filter(p => p.kategori === cat);
@@ -98,13 +117,42 @@ export const exportLaporanModalPdf = ({
     headStyles: { fillColor: [51, 65, 85] },
   });
 
-  // 5. RIWAYAT MODAL
+  // 5. RINCIAN RALAT MODAL
+  currentY = (doc as any).lastAutoTable.finalY + 15;
+  if (currentY > 240) { doc.addPage(); currentY = 20; }
+  
+  doc.setFontSize(12);
+  doc.setTextColor(37, 99, 235);
+  doc.text("Rincian Ralat Modal", 14, currentY);
+
+  if (adjustments && adjustments.length > 0) {
+    const adjTableData = [...adjustments]
+      .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0))
+      .map(adj => [
+        format(new Date(adj.tanggal), "dd/MM/yy"),
+        adj.jenis,
+        formatCurrency(adj.nominal, adj.jenis === 'Tambah'),
+        adj.keterangan
+      ]);
+
+    autoTable(doc, {
+      startY: currentY + 5,
+      head: [['Tanggal', 'Jenis', 'Nominal', 'Keterangan']],
+      body: adjTableData,
+      headStyles: { fillColor: [71, 85, 105] },
+      styles: { fontSize: 9 },
+    });
+  } else {
+    doc.setFontSize(10);
+    doc.setTextColor(100, 116, 139);
+    doc.text("Tidak ada ralat modal.", 14, currentY + 10);
+    (doc as any).lastAutoTable = { finalY: currentY + 10 };
+  }
+
+  // 6. RIWAYAT MODAL
   currentY = (doc as any).lastAutoTable.finalY + 15;
   if (modalHistory && modalHistory.length > 0) {
-    if (currentY > 240) {
-      doc.addPage();
-      currentY = 20;
-    }
+    if (currentY > 240) { doc.addPage(); currentY = 20; }
 
     doc.setFontSize(12);
     doc.setTextColor(37, 99, 235);
@@ -117,13 +165,13 @@ export const exportLaporanModalPdf = ({
         format(new Date(h.tanggal), "dd/MM/yy HH:mm"),
         formatCurrency(h.modalTarget),
         formatCurrency(h.modalSaatIni),
-        `${h.selisih >= 0 ? '+' : ''}${formatCurrency(h.selisih)}`,
-        h.status
+        formatCurrency(h.selisih, true),
+        h.status.toUpperCase()
       ]);
 
     autoTable(doc, {
       startY: currentY + 5,
-      head: [['Tanggal', 'Target', 'Modal Saat Ini', 'Selisih', 'Status']],
+      head: [['Tanggal', 'Target', 'Modal Barang', 'Selisih', 'Status']],
       body: historyTableData,
       headStyles: { fillColor: [100, 116, 139] },
       styles: { fontSize: 9 },
@@ -132,52 +180,14 @@ export const exportLaporanModalPdf = ({
     currentY = (doc as any).lastAutoTable.finalY + 15;
   }
 
-  // 6. DAFTAR PRODUK PER KATEGORI (Kecuali Titipan)
-  const regularCategories = ['Rokok', 'Sembako', 'Minuman', 'Sachet', 'Lainnya'];
-
-  regularCategories.forEach(cat => {
-    const catProducts = products.filter(p => p.kategori === cat);
-    if (catProducts.length > 0) {
-      if (currentY > 250) {
-        doc.addPage();
-        currentY = 20;
-      }
-
-      doc.setFontSize(11);
-      doc.setTextColor(37, 99, 235);
-      doc.text(`Daftar Produk ${cat}`, 14, currentY);
-
-      const tableData = catProducts.map((p, index) => [
-        index + 1,
-        p.namaBarang,
-        p.stok,
-        formatCurrency(p.modal),
-        formatCurrency(p.stok * p.modal)
-      ]);
-
-      autoTable(doc, {
-        startY: currentY + 5,
-        head: [['No', 'Nama Barang', 'Stok', 'Modal', 'Nilai Modal']],
-        body: tableData,
-        headStyles: { fillColor: [71, 85, 105] },
-        styles: { fontSize: 9 },
-      });
-
-      currentY = (doc as any).lastAutoTable.finalY + 15;
-    }
-  });
-
   // 7. DETAIL BARANG TITIPAN
   const titipanProducts = products.filter(p => p.kategori === 'Titipan');
   if (titipanProducts.length > 0) {
-    if (currentY > 240) {
-      doc.addPage();
-      currentY = 20;
-    }
+    if (currentY > 240) { doc.addPage(); currentY = 20; }
 
-    doc.setFontSize(13);
+    doc.setFontSize(12);
     doc.setTextColor(37, 99, 235);
-    doc.text("Detail Barang Titipan", 14, currentY);
+    doc.text("Detail Barang Titipan (Pengurang Modal)", 14, currentY);
     
     const titipanTableData = titipanProducts.map(p => {
       const stokAwal = p.stokAwalTitipan || 0;
@@ -220,5 +230,5 @@ export const exportLaporanModalPdf = ({
     );
   }
 
-  doc.save(`laporan-modal-${warungName.toLowerCase().replace(/\s+/g, '-')}-${format(now, "yyyy-MM-dd")}.pdf`);
+  doc.save(`laporan-roris-${warungName.toLowerCase().replace(/\s+/g, '-')}-${format(now, "yyyy-MM-dd")}.pdf`);
 };

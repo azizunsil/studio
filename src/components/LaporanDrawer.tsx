@@ -46,7 +46,7 @@ export function LaporanDrawer({ products, warungId, warungName }: LaporanDrawerP
   const [adjType, setAdjType] = useState<'Tambah' | 'Kurang'>('Tambah');
   const [adjNominal, setAdjNominal] = useState('');
 
-  // Form State Tanggungan Ledger
+  // Form State Tanggungan Ledger (Legacy, but kept if needed for listing)
   const [liaManager, setLiaManager] = useState('');
   const [liaDesc, setLiaDesc] = useState('');
   const [liaType, setLiaType] = useState<'Tambah Tanggungan' | 'Bayar Tanggungan'>('Tambah Tanggungan');
@@ -77,10 +77,6 @@ export function LaporanDrawer({ products, warungId, warungName }: LaporanDrawerP
   const sortedAdjustments = useMemo(() => {
     return [...adjustmentsData].sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
   }, [adjustmentsData]);
-
-  const sortedLiabilities = useMemo(() => {
-    return [...liabilitiesData].sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
-  }, [liabilitiesData]);
 
   const checkBackupPin = () => {
     if (isBackupUnlocked) return true;
@@ -171,7 +167,6 @@ export function LaporanDrawer({ products, warungId, warungName }: LaporanDrawerP
     }
   };
 
-  // Logic Ralat
   const handleAddAdjustment = () => {
     if (!database) return;
     const nominal = parseFloat(adjNominal);
@@ -204,41 +199,6 @@ export function LaporanDrawer({ products, warungId, warungName }: LaporanDrawerP
     }
   };
 
-  // Logic Tanggungan Ledger
-  const handleAddLiability = () => {
-    if (!database) return;
-    const nominal = parseFloat(liaNominal);
-    if (!liaManager || !liaDesc || isNaN(nominal)) {
-      toast({ variant: "destructive", title: "Gagal", description: "Lengkapi data tanggungan." });
-      return;
-    }
-    if (!checkBackupPin()) return;
-
-    const liaRef = ref(database, `warungs/${warungId}/rorisLiabilities`);
-    const payload = {
-      tanggal: Date.now(),
-      pengelola: liaManager,
-      keterangan: liaDesc,
-      jenis: liaType,
-      nominal,
-      createdAt: Date.now()
-    };
-    push(liaRef, payload).then(() => {
-      setLiaManager('');
-      setLiaDesc('');
-      setLiaNominal('');
-      toast({ title: "Tanggungan Dicatat" });
-    });
-  };
-
-  const handleDeleteLiability = (id: string) => {
-    if (!database) return;
-    if (!checkBackupPin()) return;
-    if (confirm('Hapus catatan tanggungan ini?')) {
-      remove(ref(database, `warungs/${warungId}/rorisLiabilities/${id}`));
-    }
-  };
-
   const formatCurrency = (val: number) => {
     return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(val);
   };
@@ -266,17 +226,11 @@ export function LaporanDrawer({ products, warungId, warungName }: LaporanDrawerP
     return adj.jenis === 'Tambah' ? acc + adj.nominal : acc - adj.nominal;
   }, 0);
 
-  // Kalkulasi Selisih Akhir Revisi: (Modal Barang + Ralat Bersih) - Tanggungan Roris - Target Modal
   const selisihFinal = totalModalAkhir + ralatBersih - rorisLiability - modalTarget;
   
   let statusFinal = 'Aman', statusColor = 'text-blue-600', StatusIcon = CheckCircle2;
   if (selisihFinal > 0) { statusFinal = 'Surplus'; statusColor = 'text-emerald-600'; StatusIcon = TrendingUp; }
   else if (selisihFinal < 0) { statusFinal = 'Kurang'; statusColor = 'text-destructive'; StatusIcon = TrendingDown; }
-
-  // Stats Tanggungan Ledger
-  const totalLiability = liabilitiesData.filter(l => l.jenis === 'Tambah Tanggungan').reduce((acc, l) => acc + l.nominal, 0);
-  const totalPaid = liabilitiesData.filter(l => l.jenis === 'Bayar Tanggungan').reduce((acc, l) => acc + l.nominal, 0);
-  const sisaTanggungan = totalLiability - totalPaid;
 
   return (
     <SheetContent side="left" className="w-[90%] sm:w-[400px] p-0 border-r-0">
@@ -450,7 +404,7 @@ export function LaporanDrawer({ products, warungId, warungName }: LaporanDrawerP
                         </span>
                         <span className="text-[8px] text-slate-400">{formatDate(item.tanggal)}</span>
                       </div>
-                      <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:bg-red-50 bg-red-50/50 border border-red-100 rounded-full absolute top-2 right-2" onClick={() => handleDeleteAdjustment(id)}>
+                      <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:bg-red-50 bg-red-50/50 border border-red-100 rounded-full absolute top-2 right-2" onClick={() => handleDeleteAdjustment(item.id)}>
                         <Trash2 className="h-3 w-3" />
                       </Button>
                     </div>
@@ -460,79 +414,25 @@ export function LaporanDrawer({ products, warungId, warungName }: LaporanDrawerP
             </div>
           </section>
 
-          {/* 5. TANGGUNGAN RORIS (LEDGER) SECTION */}
-          <section className="bg-slate-50 p-4 rounded-xl border border-slate-200">
-            <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-4 flex items-center gap-2"><User className="h-3 w-3" /> Log Tanggungan Pengelola</h3>
-            <div className="space-y-3">
-              {/* STATS TANGGUNGAN */}
-              <div className="bg-white p-3 rounded-lg border border-slate-200 shadow-sm space-y-2 mb-2">
-                <div className="flex justify-between text-[10px] font-bold">
-                  <span className="text-slate-400 uppercase">Sisa di Ledger</span>
-                  <span className="text-destructive font-black">{formatCurrency(sisaTanggungan)}</span>
-                </div>
-                <div className="flex gap-4">
-                  <div className="flex-1">
-                    <p className="text-[8px] text-slate-400 font-bold uppercase">Total Utang</p>
-                    <p className="text-[10px] font-bold text-slate-700">{formatCurrency(totalLiability)}</p>
-                  </div>
-                  <div className="flex-1 text-right">
-                    <p className="text-[8px] text-slate-400 font-bold uppercase">Total Bayar</p>
-                    <p className="text-[10px] font-bold text-emerald-600">{formatCurrency(totalPaid)}</p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="space-y-2 bg-white/50 p-2 rounded-lg border border-dashed border-slate-200">
-                <Input placeholder="Nama Pengelola..." className="h-8 text-[11px] bg-white" value={liaManager} onChange={(e) => setLiaManager(e.target.value)} />
-                <Input placeholder="Keterangan..." className="h-8 text-[11px] bg-white" value={liaDesc} onChange={(e) => setLiaDesc(e.target.value)} />
-                <div className="flex gap-2">
-                  <Select value={liaType} onValueChange={(val: any) => setLiaType(val)}>
-                    <SelectTrigger className="h-8 text-[10px] bg-white flex-1">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Tambah Tanggungan" className="text-[10px]">Tambah Utang</SelectItem>
-                      <SelectItem value="Bayar Tanggungan" className="text-[10px]">Bayar Utang</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <Input type="number" placeholder="Nominal Rp..." className="h-8 text-[11px] bg-white flex-1" value={liaNominal} onChange={(e) => setLiaNominal(e.target.value)} />
-                </div>
-                <Button onClick={handleAddLiability} className="w-full h-8 text-[9px] font-black uppercase gap-2 bg-slate-700">Simpan Transaksi</Button>
-              </div>
-
-              {/* LIST TANGGUNGAN */}
-              {sortedLiabilities.length > 0 && (
-                <div className="mt-4 space-y-2">
-                  <h4 className="text-[9px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-1.5"><Clock className="h-2.5 w-2.5" /> 5 Transaksi Terakhir</h4>
-                  {sortedLiabilities.slice(0, 5).map((item) => (
-                    <div key={item.id} className="bg-white p-2.5 rounded-lg border border-slate-100 shadow-sm relative pr-10">
-                      <div className="flex items-center gap-1.5 mb-1">
-                        <Badge variant="outline" className="text-[7px] h-3 px-1 border-slate-200 bg-slate-50 uppercase font-black text-slate-500">{item.pengelola}</Badge>
-                        <span className="text-[8px] text-slate-400 font-bold">{formatDate(item.tanggal)}</span>
-                      </div>
-                      <p className="text-[9px] font-bold text-slate-700 mb-1">{item.keterangan}</p>
-                      <div className="flex justify-between items-center">
-                        <span className={`text-[10px] font-black ${item.jenis === 'Tambah Tanggungan' ? 'text-destructive' : 'text-emerald-600'}`}>
-                          {item.jenis === 'Tambah Tanggungan' ? '+' : '-'}{formatCurrency(item.nominal)}
-                        </span>
-                        <span className="text-[8px] text-slate-400 font-bold uppercase">{item.jenis.split(' ')[0]}</span>
-                      </div>
-                      <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:bg-red-50 bg-red-50/50 border border-red-100 rounded-full absolute bottom-2.5 right-2" onClick={() => handleDeleteLiability(item.id)}>
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </Button>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </section>
-
-          {/* 6. EKSPOR & BACKUP */}
+          {/* 5. EKSPOR & BACKUP */}
           <section className="space-y-6">
             <div className="bg-blue-50/50 p-4 rounded-xl border border-blue-100">
               <h3 className="text-xs font-black text-blue-600 uppercase mb-3 flex items-center gap-2"><FileText className="h-3.5 w-3.5" /> Ekspor Dokumen</h3>
               <Button 
-                onClick={() => exportLaporanModalPdf({ products, modalTarget, totalModalAkhir, totalModalBiasa, totalNilaiTitipanTerjual, selisih: selisihFinal, status: statusFinal, modalHistory: historyData, warungName })} 
+                onClick={() => exportLaporanModalPdf({ 
+                  products, 
+                  modalTarget, 
+                  totalModalAkhir, 
+                  totalModalBiasa, 
+                  totalNilaiTitipanTerjual, 
+                  ralatBersih,
+                  rorisLiability,
+                  selisih: selisihFinal, 
+                  status: statusFinal, 
+                  modalHistory: historyData, 
+                  adjustments: adjustmentsData,
+                  warungName 
+                })} 
                 className="w-full h-11 text-[11px] font-black uppercase bg-white text-blue-600 border-blue-200" 
                 variant="outline"
               >
