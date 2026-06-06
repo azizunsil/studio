@@ -16,11 +16,6 @@ export const WARUNG_LIST: Warung[] = [
     name: "Toko Sinday",
     pin: "2222", // PIN Toko Sinday
   },
-  {
-    id: "toko_teji",
-    name: "Toko Teji",
-    pin: "2134", // PIN Toko Teji
-  },
 ];
 
 /**
