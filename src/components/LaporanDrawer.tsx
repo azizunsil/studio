@@ -1,4 +1,3 @@
-
 "use client"
 
 import React, { useState, useEffect, useMemo } from 'react';
@@ -8,6 +7,7 @@ import { Separator } from '@/components/ui/separator';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
+import { Badge } from '@/components/ui/badge';
 import { Product, Category } from '@/lib/types';
 import { BACKUP_PIN, STOCK_OPNAME_PIN } from '@/lib/constants';
 import { CsvActions } from '@/components/CsvActions';
