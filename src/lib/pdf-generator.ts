@@ -64,7 +64,7 @@ export const exportLaporanModalPdf = ({
   doc.text(`Dicetak pada: ${dateStr}, pukul ${timeStr} WIB`, 14, 28);
   doc.line(14, 32, 196, 32);
 
-  // SECTION 1: RINGKASAN PER KATEGORI (Nomor 1)
+  // SECTION 1: RINGKASAN PER KATEGORI
   doc.setFontSize(12);
   doc.setTextColor(30, 41, 59);
   doc.text("1. Ringkasan Per Kategori", 14, 40);
@@ -86,7 +86,7 @@ export const exportLaporanModalPdf = ({
     styles: { fontSize: 9 },
   });
 
-  // SECTION 2: RINGKASAN HASIL RORIS (Nomor 2)
+  // SECTION 2: RINGKASAN HASIL RORIS
   let currentY = (doc as any).lastAutoTable.finalY + 15;
   doc.setFontSize(12);
   doc.setTextColor(30, 41, 59);
@@ -98,9 +98,8 @@ export const exportLaporanModalPdf = ({
     return acc + (terjual * p.modal);
   }, 0);
 
-  // Kalkulasi Nilai-Nilai Ringkasan
+  // Kalkulasi Modal Kotor (Modal barang-barang non-titipan)
   const totalModalKotor = totalModalAkhir + totalNilaiTitipanTerjual;
-  const totalModalNet = totalModalAkhir + ralatBersih - rorisLiability;
 
   const summaryData = [
     ["Total Jenis Produk", `${products.length} barang`],
@@ -108,7 +107,6 @@ export const exportLaporanModalPdf = ({
     ["Titipan Terjual (-)", `-${formatCurrency(totalNilaiTitipanTerjual)}`],
     ["Ralat Modal Bersih", formatCurrency(ralatBersih, true)],
     ["Tanggungan Roris", `-${formatCurrency(rorisLiability)}`],
-    ["Total Modal Barang Net", formatCurrency(totalModalNet)],
     ["Target Modal Toko", formatCurrency(modalTarget)],
     ["Selisih Akhir", formatCurrency(selisih, true)],
     ["Status Modal", status.toUpperCase()],
@@ -121,15 +119,11 @@ export const exportLaporanModalPdf = ({
     styles: { fontSize: 10, cellPadding: 2 },
     columnStyles: { 0: { fontStyle: 'bold', width: 60 } },
     didParseCell: (data) => {
-      // Baris Selisih Akhir (index 7)
-      if (data.row.index === 7) { 
+      // Baris Selisih Akhir (sekarang index 6)
+      if (data.row.index === 6) { 
         data.cell.styles.fontStyle = 'bold';
         if (selisih < 0) data.cell.styles.textColor = [220, 38, 38];
         else if (selisih > 0) data.cell.styles.textColor = [5, 150, 105];
-      }
-      // Baris Total Modal Barang Net (index 5)
-      if (data.row.index === 5) {
-        data.cell.styles.fontStyle = 'bold';
       }
     }
   });
