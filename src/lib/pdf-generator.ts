@@ -92,20 +92,18 @@ export const exportLaporanModalPdf = ({
   doc.setTextColor(30, 41, 59);
   doc.text("2. Ringkasan Hasil Roris", 14, currentY);
 
-  // Kalkulasi Titipan Terjual
   const totalNilaiTitipanTerjual = products.filter(p => p.kategori === 'Titipan').reduce((acc, p) => {
     const terjual = Math.max(0, (p.stokAwalTitipan || 0) - p.stok);
     return acc + (terjual * p.modal);
   }, 0);
 
-  // Kalkulasi Modal Kotor (Modal barang-barang non-titipan)
-  const totalModalKotor = totalModalAkhir + totalNilaiTitipanTerjual;
+  const totalModalKotor = products.filter(p => p.kategori !== 'Titipan').reduce((acc, p) => acc + (p.modal * p.stok), 0);
 
   const summaryData = [
     ["Total Jenis Produk", `${products.length} barang`],
     ["Total Modal Kotor", formatCurrency(totalModalKotor)],
     ["Titipan Terjual (-)", `-${formatCurrency(totalNilaiTitipanTerjual)}`],
-    ["Ralat Modal Bersih", formatCurrency(ralatBersih, true)],
+    ["Ralat Modal Roris Sebelumnya", formatCurrency(ralatBersih, true)],
     ["Tanggungan Roris", `-${formatCurrency(rorisLiability)}`],
     ["Target Modal Toko", formatCurrency(modalTarget)],
     ["Selisih Akhir", formatCurrency(selisih, true)],
@@ -117,9 +115,9 @@ export const exportLaporanModalPdf = ({
     body: summaryData,
     theme: 'plain',
     styles: { fontSize: 10, cellPadding: 2 },
-    columnStyles: { 0: { fontStyle: 'bold', width: 60 } },
+    columnStyles: { 0: { fontStyle: 'bold', width: 65 } },
     didParseCell: (data) => {
-      // Baris Selisih Akhir (sekarang index 6)
+      // Baris Selisih Akhir (index 6)
       if (data.row.index === 6) { 
         data.cell.styles.fontStyle = 'bold';
         if (selisih < 0) data.cell.styles.textColor = [220, 38, 38];
@@ -128,12 +126,12 @@ export const exportLaporanModalPdf = ({
     }
   });
 
-  // SECTION 3: RINCIAN RALAT MODAL
+  // SECTION 3: RINCIAN RALAT MODAL RORIS SEBELUMNYA
   currentY = (doc as any).lastAutoTable.finalY + 15;
   if (currentY > 240) { doc.addPage(); currentY = 20; }
   doc.setFontSize(12);
   doc.setTextColor(30, 41, 59);
-  doc.text("3. Rincian Ralat Modal", 14, currentY);
+  doc.text("3. Rincian Ralat Modal Roris Sebelumnya", 14, currentY);
 
   if (adjustments && adjustments.length > 0) {
     const adjData = [...adjustments]
@@ -155,7 +153,7 @@ export const exportLaporanModalPdf = ({
   } else {
     doc.setFontSize(10);
     doc.setTextColor(100, 116, 139);
-    doc.text("Tidak ada ralat modal.", 14, currentY + 10);
+    doc.text("Tidak ada ralat modal roris sebelumnya.", 14, currentY + 10);
     (doc as any).lastAutoTable = { finalY: currentY + 10 };
   }
 
