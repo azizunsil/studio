@@ -22,7 +22,6 @@ export function FullBackupActions({ warungId }: FullBackupActionsProps) {
   const handleBackup = async () => {
     if (!database || !warungId) return;
     
-    // Pastikan user sudah login (anonim) sebelum mencoba baca
     if (!auth.currentUser) {
       toast({ variant: "destructive", title: "Akses Ditolak", description: "Sesi Anda belum siap. Silakan refresh halaman." });
       return;
@@ -30,6 +29,7 @@ export function FullBackupActions({ warungId }: FullBackupActionsProps) {
 
     setIsProcessing(true);
     try {
+      // Mengambil seluruh node di bawah toko aktif
       const dbRef = ref(database, `warungs/${warungId}`);
       const snapshot = await get(dbRef);
       
@@ -42,8 +42,9 @@ export function FullBackupActions({ warungId }: FullBackupActionsProps) {
       const backupData = {
         app: "Barang & Roris",
         warungId: warungId,
+        version: "2.0",
         exportedAt: new Date().toISOString(),
-        data: snapshot.val()
+        data: snapshot.val() // Berisi products, settings, modalChecks, modalAdjustments, rorisLiabilities
       };
 
       const blob = new Blob([JSON.stringify(backupData, null, 2)], { type: 'application/json' });
@@ -55,15 +56,13 @@ export function FullBackupActions({ warungId }: FullBackupActionsProps) {
       link.click();
       document.body.removeChild(link);
       
-      toast({ title: "Berhasil", description: "Backup JSON berhasil diunduh." });
+      toast({ title: "Berhasil", description: "Seluruh data toko berhasil dibackup ke JSON." });
     } catch (error: any) {
       console.error("Backup Error:", error);
       toast({ 
         variant: "destructive", 
         title: "Gagal Backup", 
-        description: error.message.includes("permission_denied") 
-          ? "Izin ditolak oleh server. Pastikan Security Rules sudah benar." 
-          : error.message 
+        description: error.message 
       });
     } finally {
       setIsProcessing(false);
@@ -80,15 +79,27 @@ export function FullBackupActions({ warungId }: FullBackupActionsProps) {
         const text = e.target?.result as string;
         const backup = JSON.parse(text);
 
-        if (!backup.data) throw new Error("Format file tidak valid.");
+        if (!backup.data) throw new Error("Format file backup tidak dikenali.");
         
-        const confirmRestore = confirm(`PERINGATAN: Seluruh data Toko ${warungId} saat ini akan DIHAPUS dan diganti dengan data dari file backup. Lanjutkan?`);
+        const confirmRestore = confirm(`PERINGATAN: Seluruh data Toko ${warungId} (Produk, Pengaturan, Ralat, Tanggungan) akan TIMPA dengan data dari file backup. Lanjutkan?`);
         if (!confirmRestore) return;
 
         setIsProcessing(true);
-        await set(ref(database, `warungs/${warungId}`), backup.data);
-        toast({ title: "Berhasil", description: "Data warung berhasil dipulihkan." });
+
+        // Daftar node yang akan direstore secara aman
+        const nodes = ['products', 'settings', 'modalChecks', 'modalAdjustments', 'rorisLiabilities'];
+        const restorePromises = nodes.map(node => {
+          if (backup.data[node]) {
+            return set(ref(database, `warungs/${warungId}/${node}`), backup.data[node]);
+          }
+          return Promise.resolve();
+        });
+
+        await Promise.all(restorePromises);
+        
+        toast({ title: "Restore Berhasil", description: "Data toko telah diperbarui dari file cadangan." });
       } catch (error: any) {
+        console.error("Restore Error:", error);
         toast({ variant: "destructive", title: "Gagal Restore", description: error.message });
       } finally {
         setIsProcessing(false);

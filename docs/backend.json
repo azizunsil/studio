@@ -51,6 +51,20 @@
         "nominal": { "type": "number" },
         "createdAt": { "type": "number" }
       }
+    },
+    "ModalCheck": {
+      "title": "Modal Check",
+      "description": "Riwayat pengecekan roris",
+      "type": "object",
+      "properties": {
+        "tanggal": { "type": "number" },
+        "modalTarget": { "type": "number" },
+        "modalSaatIni": { "type": "number" },
+        "selisih": { "type": "number" },
+        "status": { "type": "string" },
+        "totalJenisProduk": { "type": "number" },
+        "createdAt": { "type": "number" }
+      }
     }
   },
   "auth": {
@@ -72,6 +86,10 @@
     "warungs/{warungId}/rorisLiabilities": {
       "schema": "RorisLiability",
       "description": "Daftar tanggungan roris per toko"
+    },
+    "warungs/{warungId}/modalChecks": {
+      "schema": "ModalCheck",
+      "description": "Daftar riwayat roris per toko"
     }
   }
 }
