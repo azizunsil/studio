@@ -18,3 +18,22 @@ export interface Warung {
   name: string;
   pin: string;
 }
+
+export interface ModalAdjustment {
+  id: string;
+  tanggal: number;
+  keterangan: string;
+  jenis: 'Tambah' | 'Kurang';
+  nominal: number;
+  createdAt: number;
+}
+
+export interface RorisLiability {
+  id: string;
+  tanggal: number;
+  pengelola: string;
+  keterangan: string;
+  jenis: 'Tambah Tanggungan' | 'Bayar Tanggungan';
+  nominal: number;
+  createdAt: number;
+}

@@ -1,3 +1,4 @@
+
 {
   "entities": {
     "Product": {
@@ -18,10 +19,36 @@
     },
     "Settings": {
       "title": "Settings",
-      "description": "Pengaturan aplikasi seperti target modal",
+      "description": "Pengaturan aplikasi seperti target modal dan mode stock opname",
       "type": "object",
       "properties": {
-        "modalTarget": { "type": "number" }
+        "modalTarget": { "type": "number" },
+        "stockOpnameMode": { "type": "boolean" }
+      }
+    },
+    "ModalAdjustment": {
+      "title": "Modal Adjustment",
+      "description": "Koreksi nilai modal dari roris sebelumnya",
+      "type": "object",
+      "properties": {
+        "tanggal": { "type": "number" },
+        "keterangan": { "type": "string" },
+        "jenis": { "type": "string", "enum": ["Tambah", "Kurang"] },
+        "nominal": { "type": "number" },
+        "createdAt": { "type": "number" }
+      }
+    },
+    "RorisLiability": {
+      "title": "Roris Liability",
+      "description": "Catatan tanggungan pengelola dari roris",
+      "type": "object",
+      "properties": {
+        "tanggal": { "type": "number" },
+        "pengelola": { "type": "string" },
+        "keterangan": { "type": "string" },
+        "jenis": { "type": "string", "enum": ["Tambah Tanggungan", "Bayar Tanggungan"] },
+        "nominal": { "type": "number" },
+        "createdAt": { "type": "number" }
       }
     }
   },
@@ -29,13 +56,21 @@
     "providers": ["anonymous"]
   },
   "database": {
-    "products": {
+    "warungs/{warungId}/products": {
       "schema": "Product",
-      "description": "Daftar produk usaha"
+      "description": "Daftar produk usaha per toko"
     },
-    "settings": {
+    "warungs/{warungId}/settings": {
       "schema": "Settings",
-      "description": "Konfigurasi aplikasi"
+      "description": "Konfigurasi per toko"
+    },
+    "warungs/{warungId}/modalAdjustments": {
+      "schema": "ModalAdjustment",
+      "description": "Daftar ralat modal per toko"
+    },
+    "warungs/{warungId}/rorisLiabilities": {
+      "schema": "RorisLiability",
+      "description": "Daftar tanggungan roris per toko"
     }
   }
 }
